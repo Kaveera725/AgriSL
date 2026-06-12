@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
+import Chatbot from './pages/Chatbot';
 
 // Lightweight placeholders until each area is built out.
 function Placeholder({ title }) {
@@ -30,6 +31,15 @@ export default function App() {
             <ProtectedRoute
               allowedRoles={['farmer', 'admin']}
               element={<Placeholder title="Farmer Dashboard" />}
+            />
+          }
+        />
+        <Route
+          path="/chatbot"
+          element={
+            <ProtectedRoute
+              allowedRoles={['farmer', 'admin']}
+              element={<Chatbot />}
             />
           }
         />
