@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
 import Chatbot from './pages/Chatbot';
+import DiseaseDetection from './pages/DiseaseDetection';
 
 // Lightweight placeholders until each area is built out.
 function Placeholder({ title }) {
@@ -40,6 +41,15 @@ export default function App() {
             <ProtectedRoute
               allowedRoles={['farmer', 'admin']}
               element={<Chatbot />}
+            />
+          }
+        />
+        <Route
+          path="/disease"
+          element={
+            <ProtectedRoute
+              allowedRoles={['farmer', 'admin']}
+              element={<DiseaseDetection />}
             />
           }
         />
