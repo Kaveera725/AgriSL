@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Card,
+  CardActions,
   CardContent,
   Container,
   Grid,
@@ -28,6 +29,8 @@ const FEATURES = [
     icon: <ChatIcon sx={{ fontSize: 44, color: 'primary.main' }} />,
     title: 'AI Crop Advisor',
     desc: 'Chat with our AI assistant for personalised crop management, planting schedules, and pest control guidance.',
+    link: '/chatbot',
+    action: 'Open Chatbot',
   },
   {
     icon: <ArticleIcon sx={{ fontSize: 44, color: 'primary.main' }} />,
@@ -50,6 +53,9 @@ export default function Home() {
           </Typography>
           {isAuthenticated ? (
             <>
+              <Button component={RouterLink} to="/chatbot" color="inherit" sx={{ mr: 1 }}>
+                Chatbot
+              </Button>
               <Button
                 component={RouterLink}
                 to={ROLE_HOME[user.role] || '/dashboard'}
@@ -140,17 +146,19 @@ export default function Home() {
         </Typography>
         <Grid container spacing={4}>
           {FEATURES.map((f) => (
-            <Grid item xs={12} md={4} key={f.title}>
+            <Grid size={{ xs: 12, md: 4 }} key={f.title}>
               <Card
                 elevation={2}
                 sx={{
                   height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
                   textAlign: 'center',
                   transition: 'box-shadow 0.2s',
                   '&:hover': { boxShadow: 6 },
                 }}
               >
-                <CardContent sx={{ p: 4 }}>
+                <CardContent sx={{ p: 4, flexGrow: 1 }}>
                   {f.icon}
                   <Typography variant="h6" sx={{ fontWeight: 700, mt: 2, mb: 1 }}>
                     {f.title}
@@ -159,6 +167,18 @@ export default function Home() {
                     {f.desc}
                   </Typography>
                 </CardContent>
+                {f.link && (
+                  <CardActions sx={{ justifyContent: 'center', pb: 3 }}>
+                    <Button
+                      component={RouterLink}
+                      to={f.link}
+                      variant="contained"
+                      color="primary"
+                    >
+                      {f.action}
+                    </Button>
+                  </CardActions>
+                )}
               </Card>
             </Grid>
           ))}
@@ -177,7 +197,7 @@ export default function Home() {
               { role: 'Agricultural Officers', desc: 'Publish advisory articles, review disease reports from farmers, and support your district.' },
               { role: 'Administrators', desc: 'Manage user accounts, approve officer registrations, and oversee platform activity.' },
             ].map((r) => (
-              <Grid item xs={12} key={r.role}>
+              <Grid size={12} key={r.role}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                   <AgricultureIcon sx={{ color: 'primary.main', mt: 0.5 }} />
                   <Box>
