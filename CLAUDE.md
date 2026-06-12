@@ -31,7 +31,7 @@ docker run -d -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p 3306:3306 mysql:8
 
 **Monorepo Structure:**
 - `server/` — Express.js + MySQL backend; handles auth, file uploads, AI chat, disease detection, advisory articles
-- `client/` — React 18 + Vite SPA; Material UI (green primary `#2E7D32`, amber secondary `#F57F17`); supports Sinhala (Noto Sans Sinhala) + English
+- `client/` — React 19 + Vite SPA; Material UI (green primary `#2E7D32`, amber secondary `#F57F17`); supports Sinhala (Noto Sans Sinhala) + English
 
 **Database Schema (8 tables):**
 1. **users** — farmers, officers, admins; includes role-based access control, approval status for officers
@@ -44,7 +44,7 @@ docker run -d -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p 3306:3306 mysql:8
 8. **notifications** — system notifications to users
 
 **Authentication:**
-- JWT tokens stored in `localStorage` as `token`
+- JWT tokens stored in `localStorage` as `agrisl_token`
 - Bearer token attached to all API requests via axios interceptor (`client/src/api/axios.js`)
 - Tokens issued on login, validated server-side
 
@@ -172,7 +172,8 @@ const { data: articles } = await api.get('/articles');
 
 ## Notes for Future Dev
 
-- The `OPENAI_API_KEY` in `.env` is a placeholder; integrate with the OpenAI API (or equivalent) when implementing disease detection and AI chat features.
-- The client currently just shows `<h1>AgriSL</h1>`; build out the UI using MUI components (Button, Card, TextField, AppBar, etc.).
+- The `OPENAI_API_KEY` in `.env` must be a real key; AI chat (`/api/chat`) and disease detection (`/api/disease`) both call OpenAI gpt-4o.
+- Implemented pages: Login, Register, Home, Chatbot (`/chatbot`), Disease Detection (`/disease`). Dashboard pages are placeholders.
 - No tests are wired up yet; consider Jest + Supertest (server) and Vitest (client) when needed.
 - The `.gitignore` excludes `.env` and `uploads/*` by design; check it before committing.
+- Officers list is exposed at `GET /api/users/officers` (requireAuth); used by Disease Detection share dialog.

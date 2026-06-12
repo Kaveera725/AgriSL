@@ -125,17 +125,4 @@ function getMe(req, res) {
   return res.json({ user: req.user });
 }
 
-// GET /api/users/officers  — approved officers list for farmer "share" dialog
-async function getOfficers(req, res) {
-  try {
-    const [rows] = await pool.query(
-      "SELECT id, name, district FROM users WHERE role = 'officer' AND is_approved = 1 ORDER BY name ASC"
-    );
-    return res.json({ officers: rows });
-  } catch (err) {
-    console.error('getOfficers error:', err.message);
-    return res.status(500).json({ message: 'Server error' });
-  }
-}
-
-module.exports = { register, login, getMe, getOfficers };
+module.exports = { register, login, getMe };

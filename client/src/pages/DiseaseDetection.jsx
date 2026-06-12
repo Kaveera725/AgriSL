@@ -128,7 +128,7 @@ export default function DiseaseDetection() {
     setSelectedOfficer('');
     setShared(false);
     try {
-      const { data } = await api.get('/auth/officers');
+      const { data } = await api.get('/users/officers');
       setOfficers(data.officers);
     } catch {
       setOfficers([]);
