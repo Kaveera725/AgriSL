@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const pool = require('../db/db');
-const openai = require('../utils/openaiClient');
+const { client: openai, model: AI_MODEL } = require('../utils/openaiClient');
+const { openaiErrorResponse } = require('../utils/openaiError');
 
 // Build an absolute URL to a stored upload so clients can render the image.
 function imageUrl(req, filename) {
@@ -33,7 +34,7 @@ async function detect(req, res) {
     const base64Image = fs.readFileSync(req.file.path, { encoding: 'base64' });
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: AI_MODEL,
       max_tokens: 1200,
       messages: [
         {
@@ -103,8 +104,9 @@ async function detect(req, res) {
       ...result,
     });
   } catch (err) {
-    console.error('detect error:', err.message);
-    return res.status(500).json({ message: 'Could not analyze image, please try again' });
+    console.error('detect error:', err.status ?? '', err.code ?? '', err.message);
+    const { status, message } = openaiErrorResponse(err, 'Could not analyze image, please try again');
+    return res.status(status).json({ message });
   }
 }
 

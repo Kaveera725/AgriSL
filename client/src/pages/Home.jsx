@@ -24,6 +24,8 @@ const FEATURES = [
     icon: <BugReportIcon sx={{ fontSize: 44, color: 'primary.main' }} />,
     title: 'Disease Detection',
     desc: 'Upload a photo of your crop and get instant AI-powered disease diagnosis with treatment advice in Sinhala or English.',
+    link: '/disease',
+    action: 'Detect Disease',
   },
   {
     icon: <ChatIcon sx={{ fontSize: 44, color: 'primary.main' }} />,

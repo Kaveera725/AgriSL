@@ -1,5 +1,6 @@
 const pool = require('../db/db');
-const openai = require('../utils/openaiClient');
+const { client: openai, model: AI_MODEL } = require('../utils/openaiClient');
+const { openaiErrorResponse } = require('../utils/openaiError');
 
 const VALID_LANGUAGES = ['en', 'si'];
 
@@ -91,7 +92,7 @@ async function sendMessage(req, res) {
     ];
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: AI_MODEL,
       max_tokens: 800,
       messages: chatMessages,
     });
@@ -106,8 +107,9 @@ async function sendMessage(req, res) {
 
     return res.json({ message: assistantReply, session_id });
   } catch (err) {
-    console.error('sendMessage error:', err.message);
-    return res.status(500).json({ message: 'Could not get a response, please try again' });
+    console.error('sendMessage error:', err.status ?? '', err.code ?? '', err.message);
+    const { status, message } = openaiErrorResponse(err, 'Could not get a response, please try again');
+    return res.status(status).json({ message });
   }
 }
 

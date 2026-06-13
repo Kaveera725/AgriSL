@@ -67,9 +67,17 @@ DB_USER=root
 DB_PASS=<password>
 DB_NAME=agrisl
 JWT_SECRET=<random secret for signing JWTs>
-OPENAI_API_KEY=<key for disease detection / AI chat>
+AI_PROVIDER=gemini            # openai | gemini | groq
+GEMINI_API_KEY=<free key from aistudio.google.com/apikey>
+OPENAI_API_KEY=<only used when AI_PROVIDER=openai>
 PORT=5000
 ```
+
+**AI provider switch:** `server/utils/openaiClient.js` selects the AI backend from
+`AI_PROVIDER`. All providers speak the OpenAI Chat Completions API, so the same
+`openai` SDK is reused — only base URL, key, and model differ. `gemini` (default)
+is free and supports both chat and vision (disease detection); `groq` is free but
+text-only (chat only); `openai` is paid. Override the model with `AI_MODEL`.
 
 ## Client Structure
 

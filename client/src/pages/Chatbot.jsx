@@ -290,7 +290,7 @@ export default function Chatbot() {
           </Alert>
         ) : (
           <Paper component="form" onSubmit={handleSend} elevation={0} sx={{ p: 1.5, borderTop: '1px solid #eee' }}>
-            <Stack direction="row" spacing={1} alignItems="flex-end">
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-end' }}>
               <TextField
                 fullWidth
                 multiline
@@ -302,7 +302,7 @@ export default function Chatbot() {
                   if (e.key === 'Enter' && !e.shiftKey) handleSend(e);
                 }}
                 disabled={sending}
-                InputProps={{ sx: { fontFamily: BILINGUAL_FONT } }}
+                slotProps={{ input: { sx: { fontFamily: BILINGUAL_FONT } } }}
               />
               <Button
                 type="submit"
