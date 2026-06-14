@@ -23,6 +23,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/disease', require('./routes/diseaseRoutes'));
+app.use('/api/advisory', require('./routes/advisoryRoutes'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -7,6 +7,10 @@ import Register from './pages/Register';
 import Home from './pages/Home';
 import Chatbot from './pages/Chatbot';
 import DiseaseDetection from './pages/DiseaseDetection';
+import AdvisoryBrowse from './pages/AdvisoryBrowse';
+import AdvisoryDetail from './pages/AdvisoryDetail';
+import OfficerDashboard from './pages/officer/OfficerDashboard';
+import ArticleEditor from './pages/officer/ArticleEditor';
 
 // Lightweight placeholders until each area is built out.
 function Placeholder({ title }) {
@@ -26,6 +30,9 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        {/* Public advisory portal */}
+        <Route path="/advisory" element={<AdvisoryBrowse />} />
+        <Route path="/advisory/:id" element={<AdvisoryDetail />} />
         <Route
           path="/dashboard"
           element={
@@ -58,7 +65,25 @@ export default function App() {
           element={
             <ProtectedRoute
               allowedRoles={['officer', 'admin']}
-              element={<Placeholder title="Officer Dashboard" />}
+              element={<OfficerDashboard />}
+            />
+          }
+        />
+        <Route
+          path="/officer/articles/new"
+          element={
+            <ProtectedRoute
+              allowedRoles={['officer', 'admin']}
+              element={<ArticleEditor />}
+            />
+          }
+        />
+        <Route
+          path="/officer/articles/:id/edit"
+          element={
+            <ProtectedRoute
+              allowedRoles={['officer', 'admin']}
+              element={<ArticleEditor />}
             />
           }
         />
