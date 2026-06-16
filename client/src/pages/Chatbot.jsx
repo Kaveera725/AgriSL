@@ -1,3 +1,7 @@
+// AI chatbot page — two-phase flow:
+//   1. Setup form: farmer picks crop type, district, and language, then POSTs to /chat/start.
+//   2. Chat interface: messages are sent to /chat/message and streamed back; "Complete & Save"
+//      calls /chat/complete so the session appears in the farmer's dashboard history.
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -67,10 +71,12 @@ export default function Chatbot() {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, sending]);
 
+  // Immutable partial update for the setup form fields.
   function setField(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  // Creates a new chat session on the server and transitions to the chat phase.
   async function handleStart(e) {
     e.preventDefault();
     setError('');
@@ -90,6 +96,9 @@ export default function Chatbot() {
     }
   }
 
+  // Sends the user's message. The user bubble is appended immediately (optimistic)
+  // so the UI feels instant; the assistant reply is appended once the API responds.
+  // Enter submits; Shift+Enter inserts a newline.
   async function handleSend(e) {
     e.preventDefault();
     const text = input.trim();
@@ -115,6 +124,8 @@ export default function Chatbot() {
     }
   }
 
+  // Marks the session as completed so it appears in the farmer's chat history
+  // on the dashboard. The input is hidden once completed to prevent further messages.
   async function handleComplete() {
     setCompleting(true);
     setError('');

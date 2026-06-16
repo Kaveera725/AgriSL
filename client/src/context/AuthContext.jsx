@@ -1,3 +1,5 @@
+// Global auth state — stores the JWT, decoded user payload, and login/logout helpers.
+// Token is persisted in localStorage under TOKEN_KEY so sessions survive page refreshes.
 import { createContext, useContext, useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 
@@ -15,6 +17,8 @@ function decodeValid(token) {
   }
 }
 
+// Provides auth state to the entire app. loading=true until the localStorage
+// check resolves so ProtectedRoute doesn't flash a redirect on first render.
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
@@ -35,6 +39,8 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  // Stores the token and decoded payload. Returns false if the token is invalid
+  // or already expired so callers can surface an error without crashing.
   function login(tokenString) {
     const decoded = decodeValid(tokenString);
     if (!decoded) return false;
@@ -44,6 +50,7 @@ export function AuthProvider({ children }) {
     return true;
   }
 
+  // Clears all auth state and removes the token from storage.
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
@@ -62,6 +69,8 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// Hook for consuming auth context. Throws if called outside an AuthProvider
+// so misconfigured routes fail loudly during development.
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within an AuthProvider');

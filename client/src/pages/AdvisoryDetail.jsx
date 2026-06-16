@@ -1,3 +1,6 @@
+// Article detail page — fetches a single advisory article by ID and increments its
+// view count server-side. Authenticated farmers can rate (requires a prior chat or
+// disease-report activity) and bookmark the article.
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import {
@@ -98,6 +101,8 @@ export default function AdvisoryDetail() {
     };
   }, [isAuthenticated]);
 
+  // Posts the user's star rating and updates the displayed average with the
+  // server-returned recalculated value so the sidebar reflects the new mean immediately.
   async function submitRating(value) {
     if (!value) return;
     try {
@@ -110,6 +115,8 @@ export default function AdvisoryDetail() {
     }
   }
 
+  // Toggles bookmark state — DELETEs the bookmark when already saved, POSTs to create it.
+  // Feedback is surfaced via the bottom Snackbar toast.
   async function toggleBookmark() {
     try {
       if (bookmarked) {

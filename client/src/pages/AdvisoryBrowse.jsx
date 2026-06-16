@@ -1,3 +1,5 @@
+// Public advisory article browser — supports category filtering, full-text search
+// (debounced 500 ms), language toggle (EN/SI), and server-side pagination (9 per page).
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
@@ -42,6 +44,8 @@ const CATEGORIES = [
 
 const CATEGORY_LABEL = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));
 
+// Returns the localized label for a category value, falling back to the raw
+// value if the category is not in CATEGORY_LABEL (e.g. future categories).
 function categoryChipLabel(value, lang) {
   const c = CATEGORY_LABEL[value];
   if (!c) return value;
@@ -90,6 +94,7 @@ export default function AdvisoryBrowse() {
     };
   }, [category, search, page]);
 
+  // Switching category always resets to page 1 so you don't land on an empty page.
   function handleCategory(value) {
     setCategory(value);
     setPage(1);

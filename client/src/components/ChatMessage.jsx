@@ -1,7 +1,10 @@
+// Single chat bubble — user messages are right-aligned (primary colour), assistant
+// messages are left-aligned (grey). The flat corner points toward the sender.
 import { Box, Paper, Typography } from '@mui/material';
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 
+// Formats a UTC timestamp as a locale HH:MM string for the bubble caption.
 function formatTime(ts) {
   if (!ts) return '';
   const d = new Date(ts);

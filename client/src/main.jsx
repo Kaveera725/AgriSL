@@ -1,4 +1,4 @@
-
+// React entry point — mounts the app into #root with MUI theme and router.
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';

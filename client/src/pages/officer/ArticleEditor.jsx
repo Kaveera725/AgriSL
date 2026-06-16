@@ -1,3 +1,7 @@
+// Article create/edit form for officers — same component handles both flows:
+//   - No :id in the route → create new article (POST /advisory).
+//   - :id present       → edit existing article (PUT /advisory/:id).
+// Bilingual tabs let the officer fill English and Sinhala content independently.
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -88,11 +92,13 @@ export default function ArticleEditor() {
     };
   }, [id, isEdit]);
 
+  // Saves or publishes the article. targetStatus is passed explicitly because the
+  // "Publish" button hardcodes 'published' without waiting for the dropdown state update.
   async function save(targetStatus) {
     setError('');
     if (!titleEn.trim() || !contentEn.trim()) {
       setError('English title and content are required.');
-      setTab(0);
+      setTab(0); // Switch back to English tab so the officer sees the required fields.
       return;
     }
 

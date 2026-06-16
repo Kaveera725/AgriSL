@@ -1,3 +1,5 @@
+// Top navigation bar — shows role-based links, a live notification bell (polled every
+// 60 s), and the user avatar with logout. Rendered inside all authenticated pages.
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
@@ -51,6 +53,7 @@ function initials(name) {
     .join('');
 }
 
+// Formats a timestamp as "Mon DD, HH:MM" for the notification popover.
 function formatWhen(ts) {
   if (!ts) return '';
   const d = new Date(ts);
@@ -73,6 +76,7 @@ export default function Navbar() {
 
   const links = NAV_LINKS[user?.role] || [];
 
+  // Called by the setInterval poll; silently keeps the last good state on failure.
   async function loadNotifications() {
     try {
       const { data } = await api.get('/notifications');
@@ -103,6 +107,8 @@ export default function Navbar() {
     };
   }, []);
 
+  // Optimistically marks every notification as read in local state before
+  // the server confirms, so the badge clears immediately.
   async function handleMarkAll() {
     try {
       await api.patch('/notifications/read-all');
@@ -113,6 +119,8 @@ export default function Navbar() {
     }
   }
 
+  // Marks a single notification read when clicked. Skips the API call if
+  // it is already read to avoid redundant network requests.
   async function handleItemClick(notif) {
     if (notif.is_read) return;
     try {
@@ -126,6 +134,7 @@ export default function Navbar() {
     }
   }
 
+  // Clears auth state then hard-redirects to /login so stale UI is not visible.
   function handleLogout() {
     logout();
     navigate('/login');

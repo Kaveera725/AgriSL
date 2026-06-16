@@ -1,3 +1,6 @@
+// Officer dashboard — shows article statistics, an editable article table with
+// archive/edit actions, and a list of disease reports shared by farmers that are
+// awaiting the officer's review.
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
@@ -51,6 +54,7 @@ const STATUS_CHIP = {
   archived: { color: 'default', label: 'Archived' },
 };
 
+// Small stat tile reused for the four summary numbers at the top of the dashboard.
 function StatCard({ icon, label, value, color }) {
   return (
     <Card elevation={2} sx={{ height: '100%' }}>
@@ -81,11 +85,14 @@ export default function OfficerDashboard() {
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
 
+  // Refreshes the articles list after a mutation (archive). Called separately
+  // from the initial load so the mutation path does not need to re-fetch reports.
   async function loadArticles() {
     const { data } = await api.get('/advisory/officer/mine');
     setArticles(data.articles || []);
   }
 
+  // Refreshes pending disease reports after one is marked reviewed.
   async function loadReports() {
     try {
       const { data } = await api.get('/advisory/officer/pending-reports');
@@ -114,6 +121,8 @@ export default function OfficerDashboard() {
     };
   }, []);
 
+  // Soft-deletes the article via the DELETE route (sets status to 'archived').
+  // A confirm dialog guards against accidental clicks since this is not easily reversible from the UI.
   async function archiveArticle(id) {
     if (!window.confirm('Archive this article? It will no longer be visible to farmers.')) return;
     setBusyId(id);
@@ -127,6 +136,8 @@ export default function OfficerDashboard() {
     }
   }
 
+  // Marks a disease report as reviewed. busyId is prefixed with 'r' so article
+  // busy state and report busy state don't collide when both use the same busyId slot.
   async function markReviewed(reportId) {
     setBusyId(`r${reportId}`);
     try {

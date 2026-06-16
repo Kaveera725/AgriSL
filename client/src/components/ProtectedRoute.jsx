@@ -1,3 +1,5 @@
+// Guards a route by role. Redirects to /login when unauthenticated, shows 403 when
+// the authenticated user's role is not in allowedRoles, and blocks unapproved officers.
 import { Navigate } from 'react-router-dom';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { useAuth } from '../context/AuthContext';

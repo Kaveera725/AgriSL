@@ -1,3 +1,6 @@
+// Registration page — supports farmer and agricultural officer sign-up.
+// Officers land in a pending-approval state (is_approved=0) and cannot access
+// protected routes until an admin approves their account.
 import { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
@@ -47,10 +50,13 @@ export default function Register() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Immutable partial update so changing one field never clobbers the others.
   function setField(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  // Validates all fields and surfaces per-field error messages.
+  // Password minimum is 8 characters; district is required for geo-targeted advice.
   function validate() {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Full name is required';
@@ -64,6 +70,8 @@ export default function Register() {
     return Object.keys(errs).length === 0;
   }
 
+  // Registers the user and shows a role-aware success message before redirecting.
+  // Officers see a pending-approval notice; farmers are sent straight to login.
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');

@@ -1,3 +1,5 @@
+// Login page — validates email/password client-side, posts to /auth/login, then
+// redirects each role to its own home (farmer → /dashboard, officer → /officer/dashboard).
 import { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
@@ -33,6 +35,8 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Client-side validation — sets per-field errors so the UI highlights
+  // each invalid input inline before making a network request.
   function validate() {
     const errs = {};
     if (!email || !EMAIL_RE.test(email)) errs.email = 'Enter a valid email';
@@ -41,6 +45,8 @@ export default function Login() {
     return Object.keys(errs).length === 0;
   }
 
+  // Submits credentials, stores the JWT via AuthContext, then redirects the user
+  // to the home page for their role (farmer → /dashboard, officer → /officer/dashboard).
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');

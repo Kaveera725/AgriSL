@@ -1,3 +1,5 @@
+// Public landing page — shows a hero banner, feature cards, and audience overview.
+// Renders different CTAs for guests vs. authenticated users.
 import { Link as RouterLink } from 'react-router-dom';
 import {
   AppBar,

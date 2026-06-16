@@ -1,3 +1,7 @@
+// Farmer dashboard — profile card with inline edit, and three tabs:
+//   Chat History   — past chatbot sessions with a link to read the transcript.
+//   Disease Reports — detection results with view-detail and share-with-officer dialogs.
+//   Bookmarks       — saved advisory articles with language toggle and remove action.
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
@@ -70,6 +74,8 @@ const CATEGORY_LABEL = {
 
 const CONFIDENCE_COLOR = { High: 'success', Medium: 'warning', Low: 'error' };
 
+// Converts a UTC timestamp to the browser's local date string (e.g. "6/17/2026").
+// Returns empty string for null/invalid values so JSX renders nothing.
 function formatDate(ts) {
   if (!ts) return '';
   const d = new Date(ts);
@@ -136,6 +142,7 @@ export default function FarmerDashboard() {
   }, []);
 
   // ---- Profile editing ----
+  // Pre-populates the dialog fields with the current profile values before opening.
   function openEdit() {
     setEditName(profile?.name || '');
     setEditDistrict(profile?.district || '');
@@ -143,6 +150,8 @@ export default function FarmerDashboard() {
     setEditOpen(true);
   }
 
+  // Saves the profile edit. The server re-issues a JWT containing the new name;
+  // calling login() swaps in the fresh token so the Navbar avatar updates immediately.
   async function saveProfile() {
     if (!editName.trim() || !editDistrict) {
       setEditError('Name and district are required');
@@ -168,6 +177,8 @@ export default function FarmerDashboard() {
   }
 
   // ---- Disease report view ----
+  // Opens the report dialog and clears previous content before fetching the new one,
+  // so the loading spinner is shown instead of stale data from the last opened report.
   async function openReport(id) {
     setReportOpen(true);
     setReport(null);
@@ -185,6 +196,8 @@ export default function FarmerDashboard() {
   }
 
   // ---- Share with officer ----
+  // Opens the share dialog immediately (no loading spinner needed) while fetching
+  // the officers list in parallel so the dialog feels responsive.
   async function openShare(id) {
     setShareReportId(id);
     setSelectedOfficer('');
@@ -199,6 +212,7 @@ export default function FarmerDashboard() {
     }
   }
 
+  // Submits the share request and auto-closes the dialog after a 1.5 s success display.
   async function handleShare() {
     if (!selectedOfficer) {
       setShareError('Please select an officer');
@@ -221,6 +235,8 @@ export default function FarmerDashboard() {
   }
 
   // ---- Remove bookmark ----
+  // Removes the bookmark and immediately filters it out of local state so the
+  // card disappears without waiting for a re-fetch.
   async function removeBookmark(articleId) {
     setRemovingId(articleId);
     try {
@@ -756,6 +772,7 @@ export default function FarmerDashboard() {
   );
 }
 
+// Shared placeholder card shown when a tab has no data yet.
 function EmptyState({ text }) {
   return (
     <Card variant="outlined">

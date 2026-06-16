@@ -1,3 +1,7 @@
+// Crop disease detection page — two-phase flow:
+//   1. Upload form: farmer selects crop type, district, and a plant image (JPG/PNG ≤ 5 MB).
+//   2. Result view: shows disease name (EN + SI), confidence chip, symptoms, and treatment,
+//      with an option to share the saved report with an agricultural officer.
 import { useRef, useState } from 'react';
 import {
   Alert,
@@ -75,6 +79,8 @@ export default function DiseaseDetection() {
   const [shareError, setShareError] = useState('');
   const [shared, setShared] = useState(false);
 
+  // Validates the selected file client-side (type and size) before storing it.
+  // A blob URL is created for the local preview; the actual upload happens on submit.
   function handleFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -93,6 +99,8 @@ export default function DiseaseDetection() {
     setImagePreview(URL.createObjectURL(file));
   }
 
+  // Submits the image as multipart/form-data to /disease and transitions to
+  // the result view. The API returns disease info in both EN and SI.
   async function handleDetect(e) {
     e.preventDefault();
     setFormError('');
@@ -123,6 +131,8 @@ export default function DiseaseDetection() {
     }
   }
 
+  // Resets share-dialog state and fetches the approved officer list before opening.
+  // Officers list is fetched lazily (only when the dialog opens) to avoid extra load.
   async function openShareDialog() {
     setShareError('');
     setSelectedOfficer('');
@@ -136,6 +146,7 @@ export default function DiseaseDetection() {
     setShareOpen(true);
   }
 
+  // Posts the share request and auto-closes the dialog after a 1.5 s success display.
   async function handleShare() {
     if (!selectedOfficer) {
       setShareError('Please select an officer');
@@ -157,6 +168,7 @@ export default function DiseaseDetection() {
     }
   }
 
+  // Resets all state back to the initial upload form so the farmer can analyze another crop.
   function resetForm() {
     setCropType('');
     setDistrict('');

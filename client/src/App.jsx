@@ -1,3 +1,4 @@
+// Root component — declares all client-side routes and wraps them in AuthProvider.
 import { Routes, Route } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';

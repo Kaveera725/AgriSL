@@ -1,3 +1,5 @@
+// Read-only replay of a completed chat session — fetches messages from /chat/session/:id
+// and renders them using the same ChatMessage bubble component as the live chatbot.
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import {
