@@ -125,4 +125,49 @@ function getMe(req, res) {
   return res.json({ user: req.user });
 }
 
-module.exports = { register, login, getMe };
+// PUT /api/auth/profile — update the current user's name and district.
+// Returns a fresh token so the client's decoded session reflects the change.
+async function updateProfile(req, res) {
+  const { name, district } = req.body;
+
+  const errors = [];
+  if (!name || !name.trim()) errors.push('Name is required');
+  if (!district || !district.trim()) errors.push('District is required');
+  if (errors.length) {
+    return res.status(400).json({ message: 'Validation failed', errors });
+  }
+
+  try {
+    await pool.query('UPDATE users SET name = ?, district = ? WHERE id = ?', [
+      name.trim(),
+      district.trim(),
+      req.user.id,
+    ]);
+
+    const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const user = rows[0];
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        district: user.district,
+        is_approved: user.is_approved,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRY }
+    );
+
+    return res.json({ token, user: publicUser(user) });
+  } catch (err) {
+    console.error('updateProfile error:', err.message);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+module.exports = { register, login, getMe, updateProfile };

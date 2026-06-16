@@ -11,6 +11,8 @@ import AdvisoryBrowse from './pages/AdvisoryBrowse';
 import AdvisoryDetail from './pages/AdvisoryDetail';
 import OfficerDashboard from './pages/officer/OfficerDashboard';
 import ArticleEditor from './pages/officer/ArticleEditor';
+import FarmerDashboard from './pages/farmer/FarmerDashboard';
+import SessionView from './pages/chatbot/SessionView';
 
 // Lightweight placeholders until each area is built out.
 function Placeholder({ title }) {
@@ -38,7 +40,7 @@ export default function App() {
           element={
             <ProtectedRoute
               allowedRoles={['farmer', 'admin']}
-              element={<Placeholder title="Farmer Dashboard" />}
+              element={<FarmerDashboard />}
             />
           }
         />
@@ -48,6 +50,15 @@ export default function App() {
             <ProtectedRoute
               allowedRoles={['farmer', 'admin']}
               element={<Chatbot />}
+            />
+          }
+        />
+        <Route
+          path="/chatbot/session/:id"
+          element={
+            <ProtectedRoute
+              allowedRoles={['farmer']}
+              element={<SessionView />}
             />
           }
         />
