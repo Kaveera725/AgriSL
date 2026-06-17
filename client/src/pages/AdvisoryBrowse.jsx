@@ -10,12 +10,12 @@ import {
   CardActions,
   CardContent,
   Chip,
-  CircularProgress,
   Container,
   Grid,
   InputAdornment,
   Pagination,
   Rating,
+  Skeleton,
   Stack,
   TextField,
   ToggleButton,
@@ -192,9 +192,23 @@ export default function AdvisoryBrowse() {
 
         {/* Results */}
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-            <CircularProgress color="primary" />
-          </Box>
+          <Grid container spacing={3}>
+            {[0, 1, 2].map((i) => (
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>
+                <Card elevation={2} sx={{ height: '100%' }}>
+                  <CardContent>
+                    <Skeleton variant="rounded" width={90} height={24} sx={{ mb: 1.5 }} />
+                    <Skeleton variant="text" sx={{ fontSize: '1.25rem' }} />
+                    <Skeleton variant="text" width="60%" sx={{ mb: 1.5 }} />
+                    <Skeleton variant="text" width="40%" />
+                  </CardContent>
+                  <CardActions sx={{ px: 2, pb: 2 }}>
+                    <Skeleton variant="rounded" width="100%" height={32} />
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
         ) : error ? (
           <Typography color="error" align="center" sx={{ py: 6 }}>
             {error}
