@@ -272,6 +272,35 @@ export default function FarmerDashboard() {
           </Stack>
         ) : (
           <>
+            {/* Page header */}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 1,
+              }}
+            >
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                  Farmer Dashboard
+                </Typography>
+                {profile?.name && (
+                  <Typography variant="body2" color="text.secondary">
+                    Welcome, {profile.name}
+                  </Typography>
+                )}
+              </Box>
+              <Chip
+                icon={<AgricultureIcon />}
+                label="Farmer"
+                color="success"
+                variant="outlined"
+                sx={{ fontWeight: 600 }}
+              />
+            </Box>
+            <Divider sx={{ mb: 3 }} />
+
             {/* Profile card */}
             <Card elevation={2} sx={{ mb: 3 }}>
               <CardContent>
@@ -320,6 +349,34 @@ export default function FarmerDashboard() {
                 </Stack>
               </CardContent>
             </Card>
+
+            {/* Quick stats */}
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <StatCard
+                  icon={<ChatIcon fontSize="large" />}
+                  label="Chat Sessions"
+                  value={chatSessions.length}
+                  color="secondary.main"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <StatCard
+                  icon={<BugReportIcon fontSize="large" />}
+                  label="Disease Reports"
+                  value={diseaseReports.length}
+                  color="error.main"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <StatCard
+                  icon={<BookmarkIcon fontSize="large" />}
+                  label="Bookmarks"
+                  value={bookmarks.length}
+                  color="warning.main"
+                />
+              </Grid>
+            </Grid>
 
             {/* Tabs */}
             <Tabs
@@ -769,6 +826,39 @@ export default function FarmerDashboard() {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
     </Box>
+  );
+}
+
+function StatCard({ icon, label, value, color = 'primary.main' }) {
+  return (
+    <Card elevation={2} sx={{ height: '100%', borderLeft: 4, borderColor: color }}>
+      <CardContent>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Box
+            sx={{
+              color,
+              bgcolor: 'grey.100',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 2,
+              p: 1.2,
+              flexShrink: 0,
+            }}
+          >
+            {icon}
+          </Box>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+              {value ?? '—'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {label}
+            </Typography>
+          </Box>
+        </Stack>
+      </CardContent>
+    </Card>
   );
 }
 
