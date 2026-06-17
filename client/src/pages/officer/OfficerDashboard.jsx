@@ -2,10 +2,9 @@
 // archive/edit actions, and a list of disease reports shared by farmers that are
 // awaiting the officer's review.
 import { useEffect, useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
-  AppBar,
   Box,
   Button,
   Card,
@@ -18,6 +17,7 @@ import {
   IconButton,
   Paper,
   Rating,
+  Skeleton,
   Stack,
   Table,
   TableBody,
@@ -25,11 +25,9 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Toolbar,
   Tooltip,
   Typography,
 } from '@mui/material';
-import AgricultureIcon from '@mui/icons-material/Agriculture';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import ArchiveIcon from '@mui/icons-material/Archive';
@@ -38,6 +36,7 @@ import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import Navbar from '../../components/Navbar';
 
 const CATEGORY_LABEL = {
   crop_management: 'Crop Management',
@@ -54,16 +53,28 @@ const STATUS_CHIP = {
   archived: { color: 'default', label: 'Archived' },
 };
 
-// Small stat tile reused for the four summary numbers at the top of the dashboard.
-function StatCard({ icon, label, value, color }) {
+function StatCard({ icon, label, value, color = 'primary.main' }) {
   return (
-    <Card elevation={2} sx={{ height: '100%' }}>
+    <Card elevation={2} sx={{ height: '100%', borderLeft: 4, borderColor: color }}>
       <CardContent>
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <Box sx={{ color: color || 'primary.main' }}>{icon}</Box>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Box
+            sx={{
+              color,
+              bgcolor: 'grey.100',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 2,
+              p: 1.2,
+              flexShrink: 0,
+            }}
+          >
+            {icon}
+          </Box>
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              {value}
+            <Typography variant="h4" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+              {value ?? '—'}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {label}
@@ -77,7 +88,7 @@ function StatCard({ icon, label, value, color }) {
 
 export default function OfficerDashboard() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const [articles, setArticles] = useState([]);
   const [reports, setReports] = useState([]);
@@ -158,28 +169,16 @@ export default function OfficerDashboard() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
-      <AppBar position="static" color="primary" elevation={2}>
-        <Toolbar>
-          <AgricultureIcon sx={{ mr: 1 }} />
-          <Typography
-            variant="h6"
-            component={RouterLink}
-            to="/"
-            sx={{ flexGrow: 1, fontWeight: 700, color: 'inherit', textDecoration: 'none' }}
-          >
-            AgriSL — Officer Portal
-          </Typography>
-          <Button component={RouterLink} to="/advisory" color="inherit" sx={{ mr: 1 }}>
-            Browse Advisory
-          </Button>
-          <Button color="inherit" variant="outlined" onClick={logout}>
-            Logout
-          </Button>
-        </Toolbar>
-      </AppBar>
-
+      <Navbar />
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 1,
+          }}
+        >
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
               Officer Dashboard
@@ -190,15 +189,25 @@ export default function OfficerDashboard() {
               </Typography>
             )}
           </Box>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/officer/articles/new')}
-          >
-            Create New Article
-          </Button>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Chip
+              icon={<EditIcon />}
+              label="Officer"
+              color="primary"
+              variant="outlined"
+              sx={{ fontWeight: 600 }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => navigate('/officer/articles/new')}
+            >
+              Create New Article
+            </Button>
+          </Stack>
         </Box>
+        <Divider sx={{ mb: 3 }} />
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
@@ -207,9 +216,17 @@ export default function OfficerDashboard() {
         )}
 
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-            <CircularProgress color="primary" />
-          </Box>
+          <Stack spacing={3}>
+            <Grid container spacing={2}>
+              {[1, 2, 3, 4].map((i) => (
+                <Grid key={i} size={{ xs: 6, md: 3 }}>
+                  <Skeleton variant="rounded" height={100} />
+                </Grid>
+              ))}
+            </Grid>
+            <Skeleton variant="rounded" height={320} />
+            <Skeleton variant="rounded" height={200} />
+          </Stack>
         ) : (
           <>
             {/* Stats row */}
