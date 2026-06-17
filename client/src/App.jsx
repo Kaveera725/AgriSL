@@ -1,6 +1,5 @@
 // Root component — declares all client-side routes and wraps them in AuthProvider.
 import { Routes, Route } from 'react-router-dom';
-import { Box, Typography } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
@@ -14,17 +13,7 @@ import OfficerDashboard from './pages/officer/OfficerDashboard';
 import ArticleEditor from './pages/officer/ArticleEditor';
 import FarmerDashboard from './pages/farmer/FarmerDashboard';
 import SessionView from './pages/chatbot/SessionView';
-
-// Lightweight placeholders until each area is built out.
-function Placeholder({ title }) {
-  return (
-    <Box sx={{ p: 4 }}>
-      <Typography variant="h4" color="primary">
-        {title}
-      </Typography>
-    </Box>
-  );
-}
+import AdminDashboard from './pages/admin/AdminDashboard';
 
 export default function App() {
   return (
@@ -104,7 +93,7 @@ export default function App() {
           element={
             <ProtectedRoute
               allowedRoles={['admin']}
-              element={<Placeholder title="Admin Dashboard" />}
+              element={<AdminDashboard />}
             />
           }
         />
