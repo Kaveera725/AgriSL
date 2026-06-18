@@ -365,8 +365,7 @@ export default function OfficerDashboard() {
                           <Stack
                             direction={{ xs: 'column', sm: 'row' }}
                             spacing={2}
-                            alignItems={{ sm: 'center' }}
-                            justifyContent="space-between"
+                            sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between' }}
                           >
                             <Stack direction="row" spacing={2} alignItems="center">
                               {r.image_url && (

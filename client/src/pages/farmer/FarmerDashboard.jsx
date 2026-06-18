@@ -307,8 +307,7 @@ export default function FarmerDashboard() {
                 <Stack
                   direction={{ xs: 'column', sm: 'row' }}
                   spacing={2}
-                  justifyContent="space-between"
-                  alignItems={{ sm: 'center' }}
+                  sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
                 >
                   <Box>
                     <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>

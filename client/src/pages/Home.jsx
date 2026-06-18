@@ -197,7 +197,7 @@ export default function Home() {
       {/* Stats bar */}
       <Box sx={{ bgcolor: '#388E3C', color: '#fff', py: 3 }}>
         <Container maxWidth="md">
-          <Grid container spacing={2} justifyContent="center" textAlign="center">
+          <Grid container spacing={2} justifyContent="center" sx={{ textAlign: 'center' }}>
             {STATS.map((s) => (
               <Grid size={{ xs: 12, sm: 4 }} key={s.labelKey}>
                 <Typography variant="h4" sx={{ fontWeight: 800 }}>

@@ -1,5 +1,5 @@
 const pool = require('../db/db');
-const { client: openai, model: AI_MODEL } = require('../utils/openaiClient');
+const { client: openai, model: AI_MODEL } = require('../utils/chatClient');
 const { openaiErrorResponse } = require('../utils/openaiError');
 
 const VALID_LANGUAGES = ['en', 'si'];
