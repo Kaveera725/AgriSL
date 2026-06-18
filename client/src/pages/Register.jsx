@@ -23,7 +23,9 @@ import {
   Typography,
 } from '@mui/material';
 import api from '../api/axios';
+import { useLanguage } from '../context/LanguageContext';
 
+const BILINGUAL_FONT = "'Noto Sans Sinhala', Roboto, sans-serif";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const DISTRICTS = [
@@ -36,6 +38,7 @@ const DISTRICTS = [
 
 export default function Register() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [form, setForm] = useState({
     name: '',
@@ -121,8 +124,12 @@ export default function Register() {
           >
             AgriSL
           </Typography>
-          <Typography align="center" color="text.secondary" sx={{ mb: 3 }}>
-            Create your account
+          <Typography
+            align="center"
+            color="text.secondary"
+            sx={{ mb: 3, fontFamily: BILINGUAL_FONT }}
+          >
+            {t('auth.registerSubtitle')}
           </Typography>
 
           {error && (
@@ -138,7 +145,7 @@ export default function Register() {
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <TextField
-              label="Full Name"
+              label={t('auth.fullName')}
               fullWidth
               margin="normal"
               value={form.name}
@@ -147,7 +154,7 @@ export default function Register() {
               helperText={fieldErrors.name}
             />
             <TextField
-              label="Email"
+              label={t('auth.email')}
               type="email"
               fullWidth
               margin="normal"
@@ -157,7 +164,7 @@ export default function Register() {
               helperText={fieldErrors.email}
             />
             <TextField
-              label="Password"
+              label={t('auth.password')}
               type="password"
               fullWidth
               margin="normal"
@@ -167,7 +174,7 @@ export default function Register() {
               helperText={fieldErrors.password}
             />
             <TextField
-              label="Confirm Password"
+              label={t('auth.confirmPassword')}
               type="password"
               fullWidth
               margin="normal"
@@ -178,10 +185,10 @@ export default function Register() {
             />
 
             <FormControl fullWidth margin="normal" error={!!fieldErrors.district}>
-              <InputLabel id="district-label">District</InputLabel>
+              <InputLabel id="district-label">{t('auth.district')}</InputLabel>
               <Select
                 labelId="district-label"
-                label="District"
+                label={t('auth.district')}
                 value={form.district}
                 onChange={(e) => setField('district', e.target.value)}
               >
@@ -199,17 +206,23 @@ export default function Register() {
             </FormControl>
 
             <FormControl sx={{ mt: 2 }}>
-              <FormLabel>Account Type</FormLabel>
+              <FormLabel sx={{ fontFamily: BILINGUAL_FONT }}>{t('auth.accountType')}</FormLabel>
               <RadioGroup
                 row
                 value={form.role}
                 onChange={(e) => setField('role', e.target.value)}
               >
-                <FormControlLabel value="farmer" control={<Radio />} label="Farmer" />
+                <FormControlLabel
+                  value="farmer"
+                  control={<Radio />}
+                  label={t('auth.farmer')}
+                  slotProps={{ typography: { sx: { fontFamily: BILINGUAL_FONT } } }}
+                />
                 <FormControlLabel
                   value="officer"
                   control={<Radio />}
-                  label="Agricultural Officer"
+                  label={t('auth.officer')}
+                  slotProps={{ typography: { sx: { fontFamily: BILINGUAL_FONT } } }}
                 />
               </RadioGroup>
             </FormControl>
@@ -221,16 +234,16 @@ export default function Register() {
               fullWidth
               size="large"
               disabled={loading}
-              sx={{ mt: 2 }}
+              sx={{ mt: 2, fontFamily: BILINGUAL_FONT }}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Register'}
+              {loading ? <CircularProgress size={24} color="inherit" /> : t('nav.register')}
             </Button>
           </Box>
 
-          <Typography align="center" sx={{ mt: 3 }}>
-            Already have an account?{' '}
+          <Typography align="center" sx={{ mt: 3, fontFamily: BILINGUAL_FONT }}>
+            {t('auth.haveAccount')}{' '}
             <Link component={RouterLink} to="/login" color="primary">
-              Sign In
+              {t('nav.signIn')}
             </Link>
           </Typography>
         </CardContent>

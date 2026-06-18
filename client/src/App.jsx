@@ -2,6 +2,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import LanguageToggle from './components/LanguageToggle';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
@@ -32,6 +33,8 @@ function GuestOnly({ element }) {
 export default function App() {
   return (
     <AuthProvider>
+      {/* Global bilingual UI switcher — present on every page, persists choice. */}
+      <LanguageToggle floating />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<GuestOnly element={<Login />} />} />

@@ -180,8 +180,9 @@ const { data: articles } = await api.get('/articles');
 
 ## Notes for Future Dev
 
-- The `OPENAI_API_KEY` in `.env` must be a real key; AI chat (`/api/chat`) and disease detection (`/api/disease`) both call OpenAI gpt-4o.
-- Implemented pages: Login, Register, Home, Chatbot (`/chatbot`), Disease Detection (`/disease`). Dashboard pages are placeholders.
+- AI calls use the provider selected by `AI_PROVIDER` (default `gemini`, free). Chat (`/api/chat`) and disease detection (`/api/disease`) both go through `server/utils/openaiClient.js`; only `gemini`/`openai` support vision (disease detection).
+- All major pages are implemented: Login, Register, Home, Chatbot (`/chatbot`), Disease Detection (`/disease`), Advisory browse/detail, and the Farmer, Officer, and Admin dashboards.
+- **Bilingual UI (i18n):** a global `LanguageContext` (`client/src/context/LanguageContext.jsx`) + dictionary (`client/src/i18n/translations.js`) drive a persisted English/Sinhala toggle. The floating `<LanguageToggle/>` is rendered once in `App.jsx`. Use `const { t } = useLanguage()` and `t('area.key')` to translate a surface; the advisory pages read `lang` from the same context. This is separate from *content* language (chat/disease per-record, articles `*_en`/`*_si`).
 - No tests are wired up yet; consider Jest + Supertest (server) and Vitest (client) when needed.
 - The `.gitignore` excludes `.env` and `uploads/*` by design; check it before committing.
 - Officers list is exposed at `GET /api/users/officers` (requireAuth); used by Disease Detection share dialog.

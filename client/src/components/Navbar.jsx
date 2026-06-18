@@ -27,27 +27,29 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const BILINGUAL_FONT = "'Noto Sans Sinhala', Roboto, sans-serif";
 
-// Navigation links shown for each role.
+// Navigation links shown for each role. labelKey resolves via the i18n dictionary
+// so link text follows the global English/Sinhala toggle.
 const NAV_LINKS = {
   farmer: [
-    { label: 'Home', to: '/' },
-    { label: 'Chatbot', to: '/chatbot' },
-    { label: 'Disease Detection', to: '/disease' },
-    { label: 'Advisory', to: '/advisory' },
+    { labelKey: 'nav.home', to: '/' },
+    { labelKey: 'nav.chatbot', to: '/chatbot' },
+    { labelKey: 'nav.disease', to: '/disease' },
+    { labelKey: 'nav.advisory', to: '/advisory' },
   ],
   officer: [
-    { label: 'Dashboard', to: '/officer/dashboard' },
-    { label: 'Advisory', to: '/advisory' },
+    { labelKey: 'nav.dashboard', to: '/officer/dashboard' },
+    { labelKey: 'nav.advisory', to: '/advisory' },
   ],
-  admin: [{ label: 'Admin Panel', to: '/admin' }],
+  admin: [{ labelKey: 'nav.adminPanel', to: '/admin' }],
 };
 
 const GUEST_LINKS = [
-  { label: 'Home', to: '/' },
-  { label: 'Advisory', to: '/advisory' },
+  { labelKey: 'nav.home', to: '/' },
+  { labelKey: 'nav.advisory', to: '/advisory' },
 ];
 
 // Up to two initials from the user's name for the avatar.
@@ -85,6 +87,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
+  const { t } = useLanguage();
 
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -200,7 +203,7 @@ export default function Navbar() {
             const active = isActive(location.pathname, link.to);
             return (
               <Button
-                key={link.to + link.label}
+                key={link.to + link.labelKey}
                 component={RouterLink}
                 to={link.to}
                 color="inherit"
@@ -211,7 +214,7 @@ export default function Navbar() {
                   borderRadius: 0,
                 }}
               >
-                {link.label}
+                {t(link.labelKey)}
               </Button>
             );
           })}
@@ -248,11 +251,16 @@ export default function Navbar() {
                   justifyContent: 'space-between',
                 }}
               >
-                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  Notifications
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, fontFamily: BILINGUAL_FONT }}>
+                  {t('notif.title')}
                 </Typography>
-                <Button size="small" onClick={handleMarkAll} disabled={unreadCount === 0}>
-                  Mark all read
+                <Button
+                  size="small"
+                  onClick={handleMarkAll}
+                  disabled={unreadCount === 0}
+                  sx={{ fontFamily: BILINGUAL_FONT }}
+                >
+                  {t('notif.markAll')}
                 </Button>
               </Box>
               <Divider />
@@ -260,10 +268,10 @@ export default function Navbar() {
               {recent.length === 0 ? (
                 <Typography
                   color="text.secondary"
-                  sx={{ p: 3, textAlign: 'center' }}
                   variant="body2"
+                  sx={{ p: 3, textAlign: 'center', fontFamily: BILINGUAL_FONT }}
                 >
-                  No notifications yet.
+                  {t('notif.empty')}
                 </Typography>
               ) : (
                 <List disablePadding sx={{ maxHeight: 380, overflowY: 'auto' }}>
@@ -312,20 +320,26 @@ export default function Navbar() {
                 size="small"
                 startIcon={<LogoutIcon />}
                 onClick={handleLogout}
-                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                sx={{ display: { xs: 'none', sm: 'inline-flex' }, fontFamily: BILINGUAL_FONT }}
               >
-                Logout
+                {t('nav.logout')}
               </Button>
             </Stack>
           </>
         ) : (
           // Guest controls (desktop)
           <Stack direction="row" spacing={1} sx={{ display: { xs: 'none', md: 'flex' } }}>
-            <Button component={RouterLink} to="/login" color="inherit">
-              Login
+            <Button component={RouterLink} to="/login" color="inherit" sx={{ fontFamily: BILINGUAL_FONT }}>
+              {t('nav.login')}
             </Button>
-            <Button component={RouterLink} to="/register" color="inherit" variant="outlined">
-              Register
+            <Button
+              component={RouterLink}
+              to="/register"
+              color="inherit"
+              variant="outlined"
+              sx={{ fontFamily: BILINGUAL_FONT }}
+            >
+              {t('nav.register')}
             </Button>
           </Stack>
         )}
@@ -346,14 +360,14 @@ export default function Navbar() {
               const active = isActive(location.pathname, link.to);
               return (
                 <ListItemButton
-                  key={link.to + link.label}
+                  key={link.to + link.labelKey}
                   component={RouterLink}
                   to={link.to}
                   selected={active}
                   onClick={() => setDrawerOpen(false)}
                 >
                   <ListItemText
-                    primary={link.label}
+                    primary={t(link.labelKey)}
                     slotProps={{
                       primary: { sx: { fontFamily: BILINGUAL_FONT, fontWeight: active ? 700 : 400 } },
                     }}
@@ -371,8 +385,9 @@ export default function Navbar() {
                 color="primary"
                 startIcon={<LogoutIcon />}
                 onClick={handleLogout}
+                sx={{ fontFamily: BILINGUAL_FONT }}
               >
-                Logout
+                {t('nav.logout')}
               </Button>
             ) : (
               <Stack spacing={1}>
@@ -382,8 +397,9 @@ export default function Navbar() {
                   component={RouterLink}
                   to="/register"
                   onClick={() => setDrawerOpen(false)}
+                  sx={{ fontFamily: BILINGUAL_FONT }}
                 >
-                  Register
+                  {t('nav.register')}
                 </Button>
                 <Button
                   fullWidth
@@ -391,8 +407,9 @@ export default function Navbar() {
                   component={RouterLink}
                   to="/login"
                   onClick={() => setDrawerOpen(false)}
+                  sx={{ fontFamily: BILINGUAL_FONT }}
                 >
-                  Login
+                  {t('nav.login')}
                 </Button>
               </Stack>
             )}

@@ -19,8 +19,6 @@ import {
   Rating,
   Snackbar,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
   Toolbar,
   Tooltip,
   Typography,
@@ -34,6 +32,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import PlaceIcon from '@mui/icons-material/Place';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 
@@ -49,8 +48,9 @@ const CATEGORY_LABEL = {
 export default function AdvisoryDetail() {
   const { id } = useParams();
   const { isAuthenticated } = useAuth();
+  // Article language follows the global UI toggle (floating EN/සිං switcher).
+  const { lang } = useLanguage();
 
-  const [lang, setLang] = useState('en');
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -185,18 +185,6 @@ export default function AdvisoryDetail() {
                     color="secondary"
                     sx={{ fontFamily: BILINGUAL_FONT }}
                   />
-                  <ToggleButtonGroup
-                    value={lang}
-                    exclusive
-                    size="small"
-                    color="primary"
-                    onChange={(_, v) => v && setLang(v)}
-                  >
-                    <ToggleButton value="en">English</ToggleButton>
-                    <ToggleButton value="si" sx={{ fontFamily: BILINGUAL_FONT }}>
-                      සිංහල
-                    </ToggleButton>
-                  </ToggleButtonGroup>
                 </Box>
 
                 <Typography

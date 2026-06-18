@@ -15,7 +15,9 @@ import {
 } from '@mui/material';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
+const BILINGUAL_FONT = "'Noto Sans Sinhala', Roboto, sans-serif";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Where each role lands after a successful login.
@@ -28,6 +30,7 @@ const ROLE_HOME = {
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { t } = useLanguage();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -85,8 +88,12 @@ export default function Login() {
           >
             AgriSL
           </Typography>
-          <Typography align="center" color="text.secondary" sx={{ mb: 3 }}>
-            Sign in to your account
+          <Typography
+            align="center"
+            color="text.secondary"
+            sx={{ mb: 3, fontFamily: BILINGUAL_FONT }}
+          >
+            {t('auth.loginSubtitle')}
           </Typography>
 
           {error && (
@@ -97,7 +104,7 @@ export default function Login() {
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <TextField
-              label="Email"
+              label={t('auth.email')}
               type="email"
               fullWidth
               margin="normal"
@@ -107,7 +114,7 @@ export default function Login() {
               helperText={fieldErrors.email}
             />
             <TextField
-              label="Password"
+              label={t('auth.password')}
               type="password"
               fullWidth
               margin="normal"
@@ -123,16 +130,16 @@ export default function Login() {
               fullWidth
               size="large"
               disabled={loading}
-              sx={{ mt: 2 }}
+              sx={{ mt: 2, fontFamily: BILINGUAL_FONT }}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
+              {loading ? <CircularProgress size={24} color="inherit" /> : t('nav.signIn')}
             </Button>
           </Box>
 
-          <Typography align="center" sx={{ mt: 3 }}>
-            Don&apos;t have an account?{' '}
+          <Typography align="center" sx={{ mt: 3, fontFamily: BILINGUAL_FONT }}>
+            {t('auth.noAccount')}{' '}
             <Link component={RouterLink} to="/register" color="primary">
-              Register
+              {t('nav.register')}
             </Link>
           </Typography>
         </CardContent>

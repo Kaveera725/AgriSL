@@ -18,8 +18,6 @@ import {
   Skeleton,
   Stack,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Toolbar,
   Typography,
 } from '@mui/material';
@@ -28,6 +26,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 
@@ -54,8 +53,9 @@ function categoryChipLabel(value, lang) {
 
 export default function AdvisoryBrowse() {
   const { isAuthenticated, user, logout } = useAuth();
+  // Article language follows the global UI toggle (floating EN/සිං switcher).
+  const { lang } = useLanguage();
 
-  const [lang, setLang] = useState('en');
   const [category, setCategory] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -144,22 +144,6 @@ export default function AdvisoryBrowse() {
       </Box>
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        {/* Language toggle */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-          <ToggleButtonGroup
-            value={lang}
-            exclusive
-            size="small"
-            color="primary"
-            onChange={(_, v) => v && setLang(v)}
-          >
-            <ToggleButton value="en">English</ToggleButton>
-            <ToggleButton value="si" sx={{ fontFamily: BILINGUAL_FONT }}>
-              සිංහල
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-
         {/* Search */}
         <TextField
           fullWidth
