@@ -35,7 +35,6 @@ async function detect(req, res) {
 
     const completion = await openai.chat.completions.create({
       model: AI_MODEL,
-      max_tokens: 1200,
       messages: [
         {
           role: 'user',
