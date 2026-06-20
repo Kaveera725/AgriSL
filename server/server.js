@@ -29,8 +29,13 @@ app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`AgriSL server running on http://localhost:${PORT}`);
-});
+// Only start listening when run directly (node server.js / nodemon).
+// When required by the test suite (supertest), skip listening so no port is
+// opened and Jest can exit cleanly.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`AgriSL server running on http://localhost:${PORT}`);
+  });
+}
 
 module.exports = app;

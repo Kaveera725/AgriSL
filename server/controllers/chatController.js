@@ -83,14 +83,18 @@ async function sendMessage(req, res) {
   }
 
   try {
-    // Verify the session belongs to this user and is still active.
+    // Look the session up by id, then check ownership separately so a request
+    // for someone else's session returns 403 (forbidden) rather than 404.
     const [sessions] = await pool.query(
-      'SELECT * FROM chat_sessions WHERE id = ? AND user_id = ?',
-      [session_id, req.user.id]
+      'SELECT * FROM chat_sessions WHERE id = ?',
+      [session_id]
     );
     const session = sessions[0];
     if (!session) {
       return res.status(404).json({ message: 'Session not found' });
+    }
+    if (session.user_id !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
     }
     if (session.status !== 'active') {
       return res.status(400).json({ message: 'This session has been completed' });
