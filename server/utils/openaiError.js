@@ -34,6 +34,15 @@ function openaiErrorResponse(err, fallback) {
     };
   }
 
+  // Upstream server errors / "model overloaded" that survived the retries in
+  // utils/aiRetry.js. Transient — invite the user to try again shortly.
+  if (status === 500 || status === 502 || status === 503 || status === 504) {
+    return {
+      status: 503,
+      message: 'AI service is temporarily overloaded. Please try again in a moment.',
+    };
+  }
+
   return { status: 500, message: fallback };
 }
 

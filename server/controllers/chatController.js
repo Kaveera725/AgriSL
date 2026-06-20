@@ -1,6 +1,7 @@
 const pool = require('../db/db');
 const { client: openai, model: AI_MODEL } = require('../utils/chatClient');
 const { openaiErrorResponse } = require('../utils/openaiError');
+const { withAIRetry } = require('../utils/aiRetry');
 
 const VALID_LANGUAGES = ['en', 'si'];
 
@@ -121,10 +122,14 @@ async function sendMessage(req, res) {
       { role: 'user', content: message },
     ];
 
-    const completion = await openai.chat.completions.create({
-      model: AI_MODEL,
-      messages: chatMessages,
-    });
+    const completion = await withAIRetry(
+      () =>
+        openai.chat.completions.create({
+          model: AI_MODEL,
+          messages: chatMessages,
+        }),
+      { label: 'chat' }
+    );
 
     const assistantReply = completion.choices[0].message.content;
 

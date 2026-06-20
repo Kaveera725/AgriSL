@@ -69,12 +69,34 @@ DB_NAME=agrisl
 JWT_SECRET=<random secret for signing JWTs>
 AI_PROVIDER=gemini            # openai | gemini | groq
 GEMINI_API_KEY=<free key from aistudio.google.com/apikey>
+GROQ_API_KEY=<free key from console.groq.com — powers chat + Sinhala translation>
 OPENAI_API_KEY=<only used when AI_PROVIDER=openai>
 PLANTNET_API_KEY=<free key from my.plantnet.org — optional; grounds disease detection>
+CROP_HEALTH_API_KEY=<free key from admin.kindwise.com — optional; PRIMARY disease detector>
 PORT=5000
 ```
 
-**PlantNet (disease detection):** Before the AI diagnosis, `/api/disease` calls
+**Disease detection — two detectors (`/api/disease`):** The endpoint picks its
+diagnosis engine at request time:
+1. **Kindwise crop.health** (`server/utils/cropHealthClient.js`) — the PRIMARY,
+   purpose-built crop-disease ML. Used whenever `CROP_HEALTH_API_KEY` is set (free
+   key from https://admin.kindwise.com). It returns the crop species plus ranked
+   disease suggestions + probabilities + treatment text (prevention / chemical /
+   biological), in English, so detection no longer depends on the AI vision
+   provider's free-tier quota — which was the cause of the 503 "AI service is
+   busy" errors. Its English findings are translated to Sinhala with the free text
+   model (Groq, separate quota); if translation fails, English is shown in the
+   Sinhala fields. ("healthy" is one of crop.health's ranked suggestions — when it
+   ranks top, the report shows "No disease detected".)
+2. **AI vision model** (Gemini/OpenAI via `openaiClient.js`) — the FALLBACK, used
+   when `CROP_HEALTH_API_KEY` is unset or the crop.health call returns nothing.
+   This is the original hybrid pipeline (PlantNet species ID → vision prompt).
+
+All AI calls go through `server/utils/aiRetry.js` (`withAIRetry`), which retries
+transient 429/5xx rate-limit/overload errors with exponential backoff so brief
+free-tier limits recover automatically instead of failing the request.
+
+**PlantNet (species grounding):** Before the AI diagnosis, `/api/disease` calls
 PlantNet (`server/utils/plantNetClient.js`) to identify the plant *species* from
 the uploaded photo. PlantNet does **not** diagnose diseases — it returns the
 species + a match score, which is (a) fed into the AI vision prompt to ground the

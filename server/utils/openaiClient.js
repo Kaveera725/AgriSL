@@ -46,6 +46,11 @@ if (!config.apiKey) {
 const client = new OpenAI({
   apiKey: config.apiKey || 'no-key-configured',
   baseURL: config.baseURL,
+  // Retries are handled centrally in utils/aiRetry.js (with provider-aware
+  // backoff), so disable the SDK's own retry to avoid double/nested backoff.
+  maxRetries: 0,
+  // Vision calls can be slow; fail with a clean error rather than hang forever.
+  timeout: 60_000,
 });
 
 // AI_MODEL overrides the provider's default if set.

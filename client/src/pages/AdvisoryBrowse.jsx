@@ -151,12 +151,14 @@ export default function AdvisoryBrowse() {
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           sx={{ mb: 2, bgcolor: '#fff', fontFamily: BILINGUAL_FONT }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon color="action" />
-              </InputAdornment>
-            ),
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+            },
           }}
         />
 

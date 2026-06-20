@@ -12,15 +12,16 @@ if (!process.env.GROQ_API_KEY) {
 
 const useGroq = !!process.env.GROQ_API_KEY;
 
-const client = new OpenAI(
-  useGroq
-    ? {
-        apiKey: process.env.GROQ_API_KEY,
-        baseURL: 'https://api.groq.com/openai/v1',
-      }
-    : // Fallback: reuse the main provider config
-      require('./openaiClient').client
-);
+const client = useGroq
+  ? new OpenAI({
+      apiKey: process.env.GROQ_API_KEY,
+      baseURL: 'https://api.groq.com/openai/v1',
+      // Retries handled centrally in utils/aiRetry.js — see openaiClient.js.
+      maxRetries: 0,
+      timeout: 60_000,
+    })
+  : // Fallback: reuse the already-configured main provider client.
+    require('./openaiClient').client;
 
 const model = useGroq
   ? (process.env.CHAT_AI_MODEL || 'llama-3.3-70b-versatile')

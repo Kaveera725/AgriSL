@@ -27,28 +27,30 @@ import AgricultureIcon from '@mui/icons-material/Agriculture';
 import SaveIcon from '@mui/icons-material/Save';
 import PublishIcon from '@mui/icons-material/Publish';
 import api from '../../api/axios';
+import { useLanguage } from '../../context/LanguageContext';
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
-
-const CATEGORIES = [
-  { value: 'crop_management', label: 'Crop Management' },
-  { value: 'pest_control', label: 'Pest Control' },
-  { value: 'seasonal_planting', label: 'Seasonal Planting' },
-  { value: 'disease_treatment', label: 'Disease Treatment' },
-  { value: 'market_advice', label: 'Market Advice' },
-  { value: 'general', label: 'General' },
-];
-
-const STATUSES = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'published', label: 'Published' },
-  { value: 'archived', label: 'Archived' },
-];
 
 export default function ArticleEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
+  const { t } = useLanguage();
+
+  const CATEGORIES = [
+    { value: 'crop_management', label: t('articleEditor.catCropManagement') },
+    { value: 'pest_control', label: t('articleEditor.catPestControl') },
+    { value: 'seasonal_planting', label: t('articleEditor.catSeasonalPlanting') },
+    { value: 'disease_treatment', label: t('articleEditor.catDiseaseTreatment') },
+    { value: 'market_advice', label: t('articleEditor.catMarketAdvice') },
+    { value: 'general', label: t('articleEditor.catGeneral') },
+  ];
+
+  const STATUSES = [
+    { value: 'draft', label: t('articleEditor.statusDraft') },
+    { value: 'published', label: t('articleEditor.statusPublished') },
+    { value: 'archived', label: t('articleEditor.statusArchived') },
+  ];
 
   const [tab, setTab] = useState(0);
   const [titleEn, setTitleEn] = useState('');
@@ -74,7 +76,7 @@ export default function ArticleEditor() {
         if (!active) return;
         const article = (data.articles || []).find((a) => String(a.id) === String(id));
         if (!article) {
-          setError('Article not found or you do not have access to it.');
+          setError(t('articleEditor.errNotFound'));
           return;
         }
         setTitleEn(article.title_en || '');
@@ -85,7 +87,7 @@ export default function ArticleEditor() {
         setTags(article.tags || '');
         setStatus(article.status || 'draft');
       })
-      .catch(() => active && setError('Could not load the article.'))
+      .catch(() => active && setError(t('articleEditor.errLoad')))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
@@ -97,8 +99,8 @@ export default function ArticleEditor() {
   async function save(targetStatus) {
     setError('');
     if (!titleEn.trim() || !contentEn.trim()) {
-      setError('English title and content are required.');
-      setTab(0); // Switch back to English tab so the officer sees the required fields.
+      setError(t('articleEditor.errRequired'));
+      setTab(0);
       return;
     }
 
@@ -121,7 +123,7 @@ export default function ArticleEditor() {
       }
       navigate('/officer/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not save the article.');
+      setError(err.response?.data?.message || t('articleEditor.errSave'));
     } finally {
       setSaving(false);
     }
@@ -136,14 +138,14 @@ export default function ArticleEditor() {
             AgriSL
           </Typography>
           <Button component={RouterLink} to="/officer/dashboard" color="inherit">
-            My Articles
+            {t('nav.myArticles')}
           </Button>
         </Toolbar>
       </AppBar>
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mb: 3 }}>
-          {isEdit ? 'Edit Article' : 'Create New Article'}
+          {isEdit ? t('articleEditor.editTitle') : t('articleEditor.createTitle')}
         </Typography>
 
         {error && (
@@ -159,21 +161,21 @@ export default function ArticleEditor() {
         ) : (
           <Paper elevation={2} sx={{ p: { xs: 2, md: 4 } }}>
             <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
-              <Tab label="English Content" />
-              <Tab label="Sinhala Content / සිංහල" sx={{ fontFamily: BILINGUAL_FONT }} />
+              <Tab label={t('articleEditor.tabEnglish')} />
+              <Tab label={t('articleEditor.tabSinhala')} sx={{ fontFamily: BILINGUAL_FONT }} />
             </Tabs>
 
             {tab === 0 ? (
               <Stack spacing={2}>
                 <TextField
-                  label="Title (English)"
+                  label={t('articleEditor.titleEn')}
                   value={titleEn}
                   onChange={(e) => setTitleEn(e.target.value)}
                   fullWidth
                   required
                 />
                 <TextField
-                  label="Content (English)"
+                  label={t('articleEditor.contentEn')}
                   value={contentEn}
                   onChange={(e) => setContentEn(e.target.value)}
                   fullWidth
@@ -185,32 +187,36 @@ export default function ArticleEditor() {
             ) : (
               <Stack spacing={2}>
                 <TextField
-                  label="මාතෘකාව (සිංහල)"
+                  label={t('articleEditor.titleSi')}
                   value={titleSi}
                   onChange={(e) => setTitleSi(e.target.value)}
                   fullWidth
-                  InputProps={{ sx: { fontFamily: BILINGUAL_FONT } }}
-                  InputLabelProps={{ sx: { fontFamily: BILINGUAL_FONT } }}
+                  slotProps={{
+                    input: { sx: { fontFamily: BILINGUAL_FONT } },
+                    inputLabel: { sx: { fontFamily: BILINGUAL_FONT } },
+                  }}
                 />
                 <TextField
-                  label="අන්තර්ගතය (සිංහල)"
+                  label={t('articleEditor.contentSi')}
                   value={contentSi}
                   onChange={(e) => setContentSi(e.target.value)}
                   fullWidth
                   multiline
                   minRows={10}
-                  InputProps={{ sx: { fontFamily: BILINGUAL_FONT } }}
-                  InputLabelProps={{ sx: { fontFamily: BILINGUAL_FONT } }}
+                  slotProps={{
+                    input: { sx: { fontFamily: BILINGUAL_FONT } },
+                    inputLabel: { sx: { fontFamily: BILINGUAL_FONT } },
+                  }}
                 />
               </Stack>
             )}
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 3 }}>
               <FormControl fullWidth>
-                <InputLabel id="category-label">Category</InputLabel>
+                <InputLabel id="category-label">{t('articleEditor.category')}</InputLabel>
                 <Select
                   labelId="category-label"
-                  label="Category"
+                  label={t('articleEditor.category')}
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                 >
@@ -223,10 +229,10 @@ export default function ArticleEditor() {
               </FormControl>
 
               <FormControl fullWidth>
-                <InputLabel id="status-label">Status</InputLabel>
+                <InputLabel id="status-label">{t('articleEditor.status')}</InputLabel>
                 <Select
                   labelId="status-label"
-                  label="Status"
+                  label={t('articleEditor.status')}
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
                 >
@@ -240,12 +246,12 @@ export default function ArticleEditor() {
             </Stack>
 
             <TextField
-              label="Tags (comma-separated)"
+              label={t('articleEditor.tags')}
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               fullWidth
               sx={{ mt: 2 }}
-              placeholder="rice, irrigation, yala season"
+              placeholder={t('articleEditor.tagsPlaceholder')}
             />
 
             <Stack direction="row" spacing={2} sx={{ mt: 4 }}>
@@ -256,7 +262,7 @@ export default function ArticleEditor() {
                 onClick={() => save(status)}
                 disabled={saving}
               >
-                {saving ? <CircularProgress size={22} /> : 'Save'}
+                {saving ? <CircularProgress size={22} /> : t('articleEditor.save')}
               </Button>
               <Button
                 variant="contained"
@@ -268,10 +274,10 @@ export default function ArticleEditor() {
                 }}
                 disabled={saving}
               >
-                Publish
+                {t('articleEditor.publish')}
               </Button>
               <Button component={RouterLink} to="/officer/dashboard" disabled={saving}>
-                Cancel
+                {t('articleEditor.cancel')}
               </Button>
             </Stack>
           </Paper>
