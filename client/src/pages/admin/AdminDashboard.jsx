@@ -24,7 +24,6 @@ import {
   MenuItem,
   Rating,
   Select,
-  Stack,
   Tab,
   Table,
   TableBody,
@@ -36,6 +35,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { Stack } from '../../components/muiSystem';
 import PeopleIcon from '@mui/icons-material/People';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ChatIcon from '@mui/icons-material/Chat';

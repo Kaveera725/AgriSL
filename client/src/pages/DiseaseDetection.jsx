@@ -28,6 +28,7 @@ import {
 } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LocalFloristIcon from '@mui/icons-material/LocalFlorist';
 import api from '../api/axios';
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
@@ -223,13 +224,27 @@ export default function DiseaseDetection() {
               {result.disease_name_si}
             </Typography>
 
-            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 1, mb: 3 }}>
               <Chip
                 label={`Confidence: ${result.confidence}`}
                 color={CONFIDENCE_COLOR[result.confidence] || 'default'}
                 variant="filled"
                 sx={{ fontWeight: 600 }}
               />
+              {/* PlantNet species identification (shown only when available) */}
+              {result.plantnet && (
+                <Chip
+                  icon={<LocalFloristIcon />}
+                  label={
+                    result.plantnet.scorePct != null
+                      ? `${result.plantnet.label} · ${result.plantnet.scorePct}% match`
+                      : result.plantnet.label
+                  }
+                  color="success"
+                  variant="outlined"
+                  sx={{ fontWeight: 500, maxWidth: '100%' }}
+                />
+              )}
             </Box>
 
             <Tabs
@@ -452,7 +467,7 @@ export default function DiseaseDetection() {
                     alt="Preview"
                     sx={{ maxHeight: 180, maxWidth: '100%', borderRadius: 1, mb: 1 }}
                   />
-                  <Typography variant="caption" display="block" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                     {imageFile.name} — click to change
                   </Typography>
                 </Box>

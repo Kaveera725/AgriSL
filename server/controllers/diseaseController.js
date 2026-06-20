@@ -3,6 +3,7 @@ const path = require('path');
 const pool = require('../db/db');
 const { client: openai, model: AI_MODEL } = require('../utils/openaiClient');
 const { openaiErrorResponse } = require('../utils/openaiError');
+const { identifyPlant } = require('../utils/plantNetClient');
 
 // Build an absolute URL to a stored upload so clients can render the image.
 function imageUrl(req, filename) {
@@ -33,6 +34,17 @@ async function detect(req, res) {
   try {
     const base64Image = fs.readFileSync(req.file.path, { encoding: 'base64' });
 
+    // Step 1 — identify the plant species with PlantNet (real ML). Returns null
+    // when PlantNet is disabled or can't recognise the plant, in which case we
+    // fall back to AI-only analysis.
+    const plant = await identifyPlant(req.file.path, req.file.mimetype);
+
+    // Ground the diagnosis: tell the model what PlantNet saw so it analyses the
+    // correct species and can flag a mismatch with the farmer-selected crop.
+    const plantNetHint = plant
+      ? `\n      An automated plant-identification system (PlantNet) recognised this plant as ${plant.scientificName || plant.commonName}${plant.commonName ? ` (commonly "${plant.commonName}")` : ''}${plant.organ ? `, photographed organ: ${plant.organ}` : ''}, with a ${plant.scorePct}% match. Take this identification into account. If it clearly conflicts with the farmer-selected crop "${crop_type}", trust the visual evidence and mention the discrepancy in the symptoms.`
+      : '';
+
     const completion = await openai.chat.completions.create({
       model: AI_MODEL,
       messages: [
@@ -45,7 +57,7 @@ async function detect(req, res) {
             },
             {
               type: 'text',
-              text: `You are an expert plant pathologist advising Sri Lankan farmers. Analyze this image of a ${crop_type} plant from ${district} district, Sri Lanka.
+              text: `You are an expert plant pathologist advising Sri Lankan farmers. Analyze this image of a ${crop_type} plant from ${district} district, Sri Lanka.${plantNetHint}
       Respond ONLY with valid JSON in this exact format (no markdown, no extra text):
       {
         "disease_name_en": "disease name in English or 'No disease detected'",
@@ -70,15 +82,22 @@ async function detect(req, res) {
       return res.status(500).json({ message: 'Could not analyze image, please try again' });
     }
 
+    // Persisted, human-readable PlantNet identification, e.g.
+    // "Coconut palm (Cocos nucifera) — 56% match". Null when not identified.
+    const identifiedSpecies = plant
+      ? `${plant.label}${plant.scorePct != null ? ` — ${plant.scorePct}% match` : ''}`
+      : null;
+
     const [insert] = await pool.query(
       `INSERT INTO disease_reports
-       (user_id, crop_type, district, image_path, disease_name, confidence_level, symptoms, treatment_en, treatment_si)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (user_id, crop_type, district, image_path, identified_species, disease_name, confidence_level, symptoms, treatment_en, treatment_si)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
         crop_type,
         district,
         req.file.filename,
+        identifiedSpecies,
         result.disease_name_en,
         result.confidence,
         result.symptoms_en,
@@ -100,6 +119,7 @@ async function detect(req, res) {
     return res.json({
       report_id: insert.insertId,
       image_url: imageUrl(req, req.file.filename),
+      plantnet: plant, // { commonName, scientificName, organ, scorePct, label } | null
       ...result,
     });
   } catch (err) {

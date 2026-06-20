@@ -16,11 +16,11 @@ import {
   Pagination,
   Rating,
   Skeleton,
-  Stack,
   TextField,
   Toolbar,
   Typography,
 } from '@mui/material';
+import { Stack } from '../components/muiSystem';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';

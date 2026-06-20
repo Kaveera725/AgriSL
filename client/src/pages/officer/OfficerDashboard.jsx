@@ -18,7 +18,6 @@ import {
   Paper,
   Rating,
   Skeleton,
-  Stack,
   Table,
   TableBody,
   TableCell,
@@ -28,6 +27,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { Stack } from '../../components/muiSystem';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import ArchiveIcon from '@mui/icons-material/Archive';

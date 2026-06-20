@@ -23,6 +23,29 @@ async function migrate() {
     // Make sure subsequent queries target the right database.
     await connection.query(`USE \`${process.env.DB_NAME || 'agrisl'}\``);
 
+    // Idempotent column additions for databases created before a schema change.
+    // CREATE TABLE IF NOT EXISTS above leaves existing tables untouched, so new
+    // columns must be added here. MySQL 8 has no "ADD COLUMN IF NOT EXISTS", so
+    // each add is guarded by an information_schema check.
+    const addColumnIfMissing = async (table, column, definition) => {
+      const [[{ count }]] = await connection.query(
+        `SELECT COUNT(*) AS count FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+        [table, column]
+      );
+      if (count === 0) {
+        await connection.query(`ALTER TABLE \`${table}\` ADD COLUMN ${definition}`);
+        console.log(`Added column ${table}.${column}`);
+      }
+    };
+
+    // PlantNet plant-species identification stored on each disease report.
+    await addColumnIfMissing(
+      'disease_reports',
+      'identified_species',
+      'identified_species VARCHAR(255) AFTER image_path'
+    );
+
     // Seed users (idempotent — skip if the email already exists).
     const users = [
       { name: 'Admin', email: 'admin@agrisl.lk', password: 'admin123', role: 'admin', district: 'Colombo', is_approved: 1 },

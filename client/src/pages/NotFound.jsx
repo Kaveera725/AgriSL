@@ -1,7 +1,8 @@
 // 404 catch-all page — branded "page not found" notice in English + Sinhala
 // with a button back to the home page.
 import { Link as RouterLink } from 'react-router-dom';
-import { Box, Button, Stack, Typography } from '@mui/material';
+import { Box, Button, Typography } from '@mui/material';
+import { Stack } from '../components/muiSystem';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
 import HomeIcon from '@mui/icons-material/Home';
 

@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS disease_reports (
   crop_type VARCHAR(100),
   district VARCHAR(100),
   image_path VARCHAR(255),
+  -- PlantNet species identification, e.g. "Coconut palm (Cocos nucifera) — 56% match"
+  identified_species VARCHAR(255),
   disease_name VARCHAR(200),
   confidence_level VARCHAR(50),
   symptoms TEXT,

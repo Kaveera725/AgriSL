@@ -18,11 +18,11 @@ import {
   Paper,
   Rating,
   Snackbar,
-  Stack,
   Toolbar,
   Tooltip,
   Typography,
 } from '@mui/material';
+import { Stack } from '../components/muiSystem';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import FavoriteIcon from '@mui/icons-material/Favorite';

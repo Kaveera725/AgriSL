@@ -16,11 +16,11 @@ import {
   ListItemButton,
   ListItemText,
   Popover,
-  Stack,
   Toolbar,
   Tooltip,
   Typography,
 } from '@mui/material';
+import { Stack } from './muiSystem';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import LogoutIcon from '@mui/icons-material/Logout';

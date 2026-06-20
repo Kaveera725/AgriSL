@@ -10,11 +10,10 @@ import {
   CardContent,
   Container,
   Divider,
-  Grid,
-  Stack,
   Toolbar,
   Typography,
 } from '@mui/material';
+import { Grid, Stack } from '../components/muiSystem';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
 import EnergySavingsLeafIcon from '@mui/icons-material/EnergySavingsLeaf';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';

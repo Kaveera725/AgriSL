@@ -27,7 +27,6 @@ import {
   Select,
   Skeleton,
   Snackbar,
-  Stack,
   Tab,
   Tabs,
   TextField,
@@ -36,6 +35,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { Stack } from '../../components/muiSystem';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import BookmarkIcon from '@mui/icons-material/Bookmark';

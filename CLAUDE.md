@@ -70,8 +70,19 @@ JWT_SECRET=<random secret for signing JWTs>
 AI_PROVIDER=gemini            # openai | gemini | groq
 GEMINI_API_KEY=<free key from aistudio.google.com/apikey>
 OPENAI_API_KEY=<only used when AI_PROVIDER=openai>
+PLANTNET_API_KEY=<free key from my.plantnet.org — optional; grounds disease detection>
 PORT=5000
 ```
+
+**PlantNet (disease detection):** Before the AI diagnosis, `/api/disease` calls
+PlantNet (`server/utils/plantNetClient.js`) to identify the plant *species* from
+the uploaded photo. PlantNet does **not** diagnose diseases — it returns the
+species + a match score, which is (a) fed into the AI vision prompt to ground the
+diagnosis on the correct plant and (b) stored on the report (`identified_species`)
+and returned to the client as a `plantnet` object. It degrades gracefully: if
+`PLANTNET_API_KEY` is unset, the plant can't be recognised, or the call fails,
+`identifyPlant()` returns `null` and detection falls back to AI-only. PlantNet is
+skipped entirely under `NODE_ENV=test`.
 
 **AI provider switch:** `server/utils/openaiClient.js` selects the AI backend from
 `AI_PROVIDER`. All providers speak the OpenAI Chat Completions API, so the same
@@ -125,7 +136,7 @@ npm run lint         # ESLint
 
 2. **Officer approval flow:** Officers sign up with `is_approved=0` by default (see `users` table). Only admins can approve them. Farmers default to `is_approved=1`.
 
-3. **Disease detection integration:** The `disease_reports` table is designed to accept results from an ML model (or OpenAI's vision API). The `confidence_level`, `disease_name`, `symptoms`, and `treatment_*` fields are placeholders for that integration.
+3. **Disease detection integration:** `/api/disease` runs a hybrid pipeline — PlantNet identifies the plant species (real ML, stored in `identified_species`), then the AI vision model uses that ID to fill `disease_name`, `confidence_level`, `symptoms`, and `treatment_*` in both languages. See the PlantNet note under *Server API Structure*.
 
 4. **Chat sessions are language-scoped:** Each session has a `language` (en/si). Messages in a session should be in that language.
 
