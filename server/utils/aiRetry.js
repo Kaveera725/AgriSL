@@ -1,5 +1,3 @@
-// Retry wrapper for AI chat-completion calls.
-//
 // The free AI tiers this app runs on (Gemini for vision + chat, Groq for chat)
 // enforce tight per-minute rate limits and occasionally report the model as
 // "overloaded". Both surface as transient HTTP errors (429 / 5xx) that clear on
