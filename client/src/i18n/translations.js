@@ -1,5 +1,5 @@
 // UI translation dictionary for the global bilingual (English / Sinhala) toggle.
-//
+
 // This powers the *interface chrome* — navigation, landing page, auth forms, and
 // the advisory browser. It is intentionally separate from *content* language:
 // chat sessions and disease reports carry their own per-record language, and
