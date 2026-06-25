@@ -56,4 +56,4 @@ const client = new OpenAI({
 // AI_MODEL overrides the provider's default if set.
 const model = process.env.AI_MODEL || config.defaultModel;
 
-module.exports = { client, model, provider };
+module.exports = { client, model };

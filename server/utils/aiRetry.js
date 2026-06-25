@@ -66,4 +66,4 @@ async function withAIRetry(fn, { retries = 3, label = 'AI' } = {}) {
   }
 }
 
-module.exports = { withAIRetry, isRetryable };
+module.exports = { withAIRetry };

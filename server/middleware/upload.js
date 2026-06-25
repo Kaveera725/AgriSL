@@ -45,4 +45,4 @@ function uploadImage(req, res, next) {
   });
 }
 
-module.exports = { upload, uploadImage };
+module.exports = { uploadImage };

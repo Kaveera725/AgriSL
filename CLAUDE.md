@@ -56,7 +56,7 @@ docker run -d -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p 3306:3306 mysql:8
 
 - `routes/` — Endpoint definitions (auth, chat, disease detection, articles, etc.)
 - `controllers/` — Business logic for each route
-- `middleware/` — Auth validation, error handling, input sanitization (express-validator)
+- `middleware/` — JWT auth/role guards (`auth.js`) and image-upload handling (`upload.js`)
 - `db/` — Database connection pool (`db.js`), schema (`init.sql`), migration runner (`migrate.js`)
 - `.env` — Database credentials, JWT secret, OpenAI API key, port
 
