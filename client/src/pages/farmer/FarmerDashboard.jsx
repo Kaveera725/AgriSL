@@ -49,7 +49,13 @@ import ShareIcon from '@mui/icons-material/Share';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import Navbar from '../../components/Navbar';
+
+// Fill {placeholders} in a translated string, e.g. fmt('Show ({n})', { n: 3 }).
+function fmt(template, vars = {}) {
+  return template.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? `{${k}}`));
+}
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 // Uploads are served from the API origin (not under /api), so build URLs directly.
@@ -85,6 +91,7 @@ function formatDate(ts) {
 export default function FarmerDashboard() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { t } = useLanguage();
 
   const [profile, setProfile] = useState(null);
   const [chatSessions, setChatSessions] = useState([]);
@@ -142,12 +149,12 @@ export default function FarmerDashboard() {
         setBookmarks(data.bookmarks || []);
         setError('');
       })
-      .catch(() => active && setError('Could not load your dashboard.'))
+      .catch(() => active && setError(t('farmerDash.errLoadDashboard')))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
   // ---- Older chat sessions ----
   // Pulls the full chat history (including sessions older than the archive
@@ -159,7 +166,7 @@ export default function FarmerDashboard() {
       setChatSessions(data.sessions || []);
       setShowAllChats(true);
     } catch {
-      setToast('Could not load older chats');
+      setToast(t('farmerDash.loadOlderError'));
     } finally {
       setLoadingAllChats(false);
     }
@@ -178,7 +185,7 @@ export default function FarmerDashboard() {
   // calling login() swaps in the fresh token so the Navbar avatar updates immediately.
   async function saveProfile() {
     if (!editName.trim() || !editDistrict) {
-      setEditError('Name and district are required');
+      setEditError(t('farmerDash.errNameDistrict'));
       return;
     }
     setSavingProfile(true);
@@ -192,9 +199,9 @@ export default function FarmerDashboard() {
       if (data.token) login(data.token);
       setProfile((p) => ({ ...p, name: data.user.name, district: data.user.district }));
       setEditOpen(false);
-      setToast('Profile updated');
+      setToast(t('farmerDash.toastProfileUpdated'));
     } catch (err) {
-      setEditError(err.response?.data?.message || 'Could not update profile');
+      setEditError(err.response?.data?.message || t('farmerDash.errUpdateProfile'));
     } finally {
       setSavingProfile(false);
     }
@@ -213,7 +220,7 @@ export default function FarmerDashboard() {
       const { data } = await api.get(`/disease/${id}`);
       setReport(data.report);
     } catch (err) {
-      setReportError(err.response?.data?.message || 'Could not load this report');
+      setReportError(err.response?.data?.message || t('farmerDash.errLoadReport'));
     } finally {
       setReportLoading(false);
     }
@@ -239,7 +246,7 @@ export default function FarmerDashboard() {
   // Submits the share request and auto-closes the dialog after a 1.5 s success display.
   async function handleShare() {
     if (!selectedOfficer) {
-      setShareError('Please select an officer');
+      setShareError(t('farmerDash.errSelectOfficer'));
       return;
     }
     setSharing(true);
@@ -252,7 +259,7 @@ export default function FarmerDashboard() {
       setShared(true);
       setTimeout(() => setShareOpen(false), 1500);
     } catch (err) {
-      setShareError(err.response?.data?.message || 'Could not share the report');
+      setShareError(err.response?.data?.message || t('farmerDash.errShareReport'));
     } finally {
       setSharing(false);
     }
@@ -266,9 +273,9 @@ export default function FarmerDashboard() {
     try {
       await api.delete(`/advisory/${articleId}/bookmark`);
       setBookmarks((list) => list.filter((b) => b.id !== articleId));
-      setToast('Bookmark removed');
+      setToast(t('farmerDash.toastBookmarkRemoved'));
     } catch {
-      setToast('Could not remove bookmark');
+      setToast(t('farmerDash.toastBookmarkErr'));
     } finally {
       setRemovingId(null);
     }
@@ -276,6 +283,11 @@ export default function FarmerDashboard() {
 
   const diseaseFound =
     report && report.disease_name && report.disease_name !== 'No disease detected';
+
+  // Translate a stored High/Medium/Low confidence value for display while keeping
+  // the original English value as the colour-map key.
+  const confidenceLabel = (level) =>
+    fmt(t('farmerDash.confidence'), { level: t(`farmerDash.conf${level}`) });
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
@@ -306,21 +318,28 @@ export default function FarmerDashboard() {
               }}
             >
               <Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                  Farmer Dashboard
+                <Typography
+                  variant="h4"
+                  sx={{ fontWeight: 700, color: 'primary.main', fontFamily: BILINGUAL_FONT }}
+                >
+                  {t('farmerDash.title')}
                 </Typography>
                 {profile?.name && (
-                  <Typography variant="body2" color="text.secondary">
-                    Welcome, {profile.name}
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontFamily: BILINGUAL_FONT }}
+                  >
+                    {fmt(t('farmerDash.welcome'), { name: profile.name })}
                   </Typography>
                 )}
               </Box>
               <Chip
                 icon={<AgricultureIcon />}
-                label="Farmer"
+                label={t('farmerDash.roleFarmer')}
                 color="success"
                 variant="outlined"
-                sx={{ fontWeight: 600 }}
+                sx={{ fontWeight: 600, fontFamily: BILINGUAL_FONT }}
               />
             </Box>
             <Divider sx={{ mb: 3 }} />
@@ -349,14 +368,16 @@ export default function FarmerDashboard() {
                       </Stack>
                       <Stack direction="row" spacing={0.5} alignItems="center">
                         <PlaceIcon sx={{ fontSize: 18 }} />
-                        <Typography variant="body2">
-                          {profile?.district || 'No district set'}
+                        <Typography variant="body2" sx={{ fontFamily: BILINGUAL_FONT }}>
+                          {profile?.district || t('farmerDash.noDistrict')}
                         </Typography>
                       </Stack>
                       <Stack direction="row" spacing={0.5} alignItems="center">
                         <CalendarMonthIcon sx={{ fontSize: 18 }} />
-                        <Typography variant="body2">
-                          Member since {formatDate(profile?.created_at)}
+                        <Typography variant="body2" sx={{ fontFamily: BILINGUAL_FONT }}>
+                          {fmt(t('farmerDash.memberSince'), {
+                            date: formatDate(profile?.created_at),
+                          })}
                         </Typography>
                       </Stack>
                     </Stack>
@@ -366,8 +387,9 @@ export default function FarmerDashboard() {
                     color="primary"
                     startIcon={<EditIcon />}
                     onClick={openEdit}
+                    sx={{ fontFamily: BILINGUAL_FONT }}
                   >
-                    Edit Profile
+                    {t('farmerDash.editProfile')}
                   </Button>
                 </Stack>
               </CardContent>
@@ -378,7 +400,7 @@ export default function FarmerDashboard() {
               <Grid size={{ xs: 12, sm: 4 }}>
                 <StatCard
                   icon={<ChatIcon fontSize="large" />}
-                  label="Chat Sessions"
+                  label={t('farmerDash.statChats')}
                   value={chatSessions.length}
                   color="secondary.main"
                 />
@@ -386,7 +408,7 @@ export default function FarmerDashboard() {
               <Grid size={{ xs: 12, sm: 4 }}>
                 <StatCard
                   icon={<BugReportIcon fontSize="large" />}
-                  label="Disease Reports"
+                  label={t('farmerDash.statReports')}
                   value={diseaseReports.length}
                   color="error.main"
                 />
@@ -394,7 +416,7 @@ export default function FarmerDashboard() {
               <Grid size={{ xs: 12, sm: 4 }}>
                 <StatCard
                   icon={<BookmarkIcon fontSize="large" />}
-                  label="Bookmarks"
+                  label={t('farmerDash.statBookmarks')}
                   value={bookmarks.length}
                   color="warning.main"
                 />
@@ -405,13 +427,21 @@ export default function FarmerDashboard() {
             <Tabs
               value={tab}
               onChange={(_, v) => setTab(v)}
-              sx={{ mb: 2 }}
+              sx={{ mb: 2, '& .MuiTab-root': { fontFamily: BILINGUAL_FONT } }}
               variant="scrollable"
               scrollButtons="auto"
             >
-              <Tab icon={<ChatIcon />} iconPosition="start" label="Chat History" />
-              <Tab icon={<BugReportIcon />} iconPosition="start" label="Disease Reports" />
-              <Tab icon={<BookmarkIcon />} iconPosition="start" label="Bookmarks" />
+              <Tab icon={<ChatIcon />} iconPosition="start" label={t('farmerDash.tabChats')} />
+              <Tab
+                icon={<BugReportIcon />}
+                iconPosition="start"
+                label={t('farmerDash.tabReports')}
+              />
+              <Tab
+                icon={<BookmarkIcon />}
+                iconPosition="start"
+                label={t('farmerDash.tabBookmarks')}
+              />
             </Tabs>
 
             {/* --- Chat History tab --- */}
@@ -419,9 +449,12 @@ export default function FarmerDashboard() {
               <>
                 {/* Explain that older chats are tucked away, not lost. */}
                 {!showAllChats && (
-                  <Alert severity="info" icon={<ChatIcon />} sx={{ mb: 2 }}>
-                    Showing chats from the last {chatArchiveDays} days. Older
-                    conversations are kept and can be reopened any time.
+                  <Alert
+                    severity="info"
+                    icon={<ChatIcon />}
+                    sx={{ mb: 2, fontFamily: BILINGUAL_FONT }}
+                  >
+                    {fmt(t('farmerDash.chatArchiveNote'), { days: chatArchiveDays })}
                   </Alert>
                 )}
 
@@ -429,10 +462,11 @@ export default function FarmerDashboard() {
                   <EmptyState
                     text={
                       archivedChatCount > 0 && !showAllChats
-                        ? `No chats in the last ${chatArchiveDays} days. You have ${archivedChatCount} older conversation${
-                            archivedChatCount === 1 ? '' : 's'
-                          } you can reopen below.`
-                        : 'No chat sessions yet.'
+                        ? fmt(t('farmerDash.noRecentChats'), {
+                            days: chatArchiveDays,
+                            n: archivedChatCount,
+                          })
+                        : t('farmerDash.noChatsYet')
                     }
                   />
                 ) : (
@@ -453,8 +487,13 @@ export default function FarmerDashboard() {
                             </Stack>
                             <Chip
                               size="small"
-                              label={s.status === 'completed' ? 'Completed' : 'Active'}
+                              label={
+                                s.status === 'completed'
+                                  ? t('farmerDash.statusCompleted')
+                                  : t('farmerDash.statusActive')
+                              }
                               color={s.status === 'completed' ? 'success' : 'info'}
+                              sx={{ fontFamily: BILINGUAL_FONT }}
                             />
                           </Stack>
                           <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
@@ -467,7 +506,10 @@ export default function FarmerDashboard() {
                             <Chip
                               size="small"
                               variant="outlined"
-                              label={`${s.message_count} messages`}
+                              label={fmt(t('farmerDash.messagesCount'), {
+                                n: s.message_count,
+                              })}
+                              sx={{ fontFamily: BILINGUAL_FONT }}
                             />
                           </Stack>
                           <Stack
@@ -483,8 +525,9 @@ export default function FarmerDashboard() {
                               size="small"
                               startIcon={<VisibilityIcon />}
                               onClick={() => navigate(`/chatbot/session/${s.id}`)}
+                              sx={{ fontFamily: BILINGUAL_FONT }}
                             >
-                              View
+                              {t('farmerDash.view')}
                             </Button>
                           </Stack>
                         </CardContent>
@@ -508,9 +551,9 @@ export default function FarmerDashboard() {
                       }
                       disabled={loadingAllChats}
                       onClick={loadOlderChats}
+                      sx={{ fontFamily: BILINGUAL_FONT }}
                     >
-                      Show {archivedChatCount} older chat
-                      {archivedChatCount === 1 ? '' : 's'}
+                      {fmt(t('farmerDash.showOlderChats'), { n: archivedChatCount })}
                     </Button>
                   </Box>
                 )}
@@ -520,12 +563,15 @@ export default function FarmerDashboard() {
             {/* --- Disease Reports tab --- */}
             {tab === 1 && (
               <>
-                <Alert severity="success" icon={<BugReportIcon />} sx={{ mb: 2 }}>
-                  Your disease reports are kept permanently so you can track
-                  recurring problems season after season.
+                <Alert
+                  severity="success"
+                  icon={<BugReportIcon />}
+                  sx={{ mb: 2, fontFamily: BILINGUAL_FONT }}
+                >
+                  {t('farmerDash.diseaseKeptNote')}
                 </Alert>
                 {diseaseReports.length === 0 ? (
-                  <EmptyState text="No disease reports yet." />
+                  <EmptyState text={t('farmerDash.noReportsYet')} />
                 ) : (
                   <Grid container spacing={2}>
                     {diseaseReports.map((r) => (
@@ -549,22 +595,33 @@ export default function FarmerDashboard() {
                               <Typography sx={{ fontWeight: 600 }}>{r.crop_type}</Typography>
                               <Chip
                                 size="small"
-                                label={r.status === 'reviewed' ? 'Reviewed' : 'Pending'}
+                                label={
+                                  r.status === 'reviewed'
+                                    ? t('farmerDash.statusReviewed')
+                                    : t('farmerDash.statusPending')
+                                }
                                 color={r.status === 'reviewed' ? 'success' : 'warning'}
+                                sx={{ fontFamily: BILINGUAL_FONT }}
                               />
                             </Stack>
                             <Typography
                               variant="subtitle2"
-                              sx={{ fontWeight: 700, color: 'error.main', mt: 0.5 }}
+                              sx={{
+                                fontWeight: 700,
+                                color: 'error.main',
+                                mt: 0.5,
+                                fontFamily: BILINGUAL_FONT,
+                              }}
                             >
-                              {r.disease_name || 'Unknown'}
+                              {r.disease_name || t('farmerDash.unknownDisease')}
                             </Typography>
                             <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
                               {r.confidence_level && (
                                 <Chip
                                   size="small"
-                                  label={`Confidence: ${r.confidence_level}`}
+                                  label={confidenceLabel(r.confidence_level)}
                                   color={CONFIDENCE_COLOR[r.confidence_level] || 'default'}
+                                  sx={{ fontFamily: BILINGUAL_FONT }}
                                 />
                               )}
                               <Chip size="small" variant="outlined" label={r.district} />
@@ -583,15 +640,17 @@ export default function FarmerDashboard() {
                                   size="small"
                                   startIcon={<VisibilityIcon />}
                                   onClick={() => openReport(r.id)}
+                                  sx={{ fontFamily: BILINGUAL_FONT }}
                                 >
-                                  View
+                                  {t('farmerDash.view')}
                                 </Button>
                                 <Button
                                   size="small"
                                   startIcon={<ShareIcon />}
                                   onClick={() => openShare(r.id)}
+                                  sx={{ fontFamily: BILINGUAL_FONT }}
                                 >
-                                  Share
+                                  {t('farmerDash.share')}
                                 </Button>
                               </Stack>
                             </Stack>
@@ -623,7 +682,7 @@ export default function FarmerDashboard() {
                   </ToggleButtonGroup>
                 </Box>
                 {bookmarks.length === 0 ? (
-                  <EmptyState text="No bookmarked articles yet." />
+                  <EmptyState text={t('farmerDash.noBookmarksYet')} />
                 ) : (
                   <Grid container spacing={2}>
                     {bookmarks.map((b) => {
@@ -646,7 +705,7 @@ export default function FarmerDashboard() {
                                 >
                                   {title}
                                 </Typography>
-                                <Tooltip title="Remove bookmark">
+                                <Tooltip title={t('farmerDash.removeBookmark')}>
                                   <span>
                                     <IconButton
                                       size="small"
@@ -678,15 +737,22 @@ export default function FarmerDashboard() {
                                 alignItems="center"
                                 sx={{ mt: 1.5 }}
                               >
-                                <Typography variant="caption" color="text.secondary">
-                                  Saved {formatDate(b.bookmarked_at)}
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{ fontFamily: BILINGUAL_FONT }}
+                                >
+                                  {fmt(t('farmerDash.saved'), {
+                                    date: formatDate(b.bookmarked_at),
+                                  })}
                                 </Typography>
                                 <Button
                                   size="small"
                                   component={RouterLink}
                                   to={`/advisory/${b.id}`}
+                                  sx={{ fontFamily: BILINGUAL_FONT }}
                                 >
-                                  Read Article
+                                  {t('farmerDash.readArticle')}
                                 </Button>
                               </Stack>
                             </CardContent>
@@ -704,25 +770,27 @@ export default function FarmerDashboard() {
 
       {/* Edit profile dialog */}
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Edit Profile</DialogTitle>
+        <DialogTitle sx={{ fontFamily: BILINGUAL_FONT }}>
+          {t('farmerDash.editProfile')}
+        </DialogTitle>
         <DialogContent>
           {editError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 2, fontFamily: BILINGUAL_FONT }}>
               {editError}
             </Alert>
           )}
           <TextField
-            label="Name"
+            label={t('farmerDash.name')}
             fullWidth
             margin="normal"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
           />
           <FormControl fullWidth margin="normal">
-            <InputLabel id="edit-district-label">District</InputLabel>
+            <InputLabel id="edit-district-label">{t('farmerDash.districtLabel')}</InputLabel>
             <Select
               labelId="edit-district-label"
-              label="District"
+              label={t('farmerDash.districtLabel')}
               value={editDistrict}
               onChange={(e) => setEditDistrict(e.target.value)}
             >
@@ -735,11 +803,24 @@ export default function FarmerDashboard() {
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditOpen(false)} disabled={savingProfile}>
-            Cancel
+          <Button
+            onClick={() => setEditOpen(false)}
+            disabled={savingProfile}
+            sx={{ fontFamily: BILINGUAL_FONT }}
+          >
+            {t('farmerDash.cancel')}
           </Button>
-          <Button variant="contained" onClick={saveProfile} disabled={savingProfile}>
-            {savingProfile ? <CircularProgress size={20} color="inherit" /> : 'Save'}
+          <Button
+            variant="contained"
+            onClick={saveProfile}
+            disabled={savingProfile}
+            sx={{ fontFamily: BILINGUAL_FONT }}
+          >
+            {savingProfile ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              t('farmerDash.save')
+            )}
           </Button>
         </DialogActions>
       </Dialog>
@@ -751,7 +832,9 @@ export default function FarmerDashboard() {
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle sx={{ fontFamily: BILINGUAL_FONT }}>Disease Report</DialogTitle>
+        <DialogTitle sx={{ fontFamily: BILINGUAL_FONT }}>
+          {t('farmerDash.reportTitle')}
+        </DialogTitle>
         <DialogContent dividers>
           {reportLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -783,15 +866,21 @@ export default function FarmerDashboard() {
               <Stack direction="row" spacing={1} justifyContent="center" sx={{ my: 1.5 }}>
                 {report.confidence_level && (
                   <Chip
-                    label={`Confidence: ${report.confidence_level}`}
+                    label={confidenceLabel(report.confidence_level)}
                     color={CONFIDENCE_COLOR[report.confidence_level] || 'default'}
+                    sx={{ fontFamily: BILINGUAL_FONT }}
                   />
                 )}
                 <Chip variant="outlined" label={`${report.crop_type} · ${report.district}`} />
                 <Chip
                   size="small"
-                  label={report.status === 'reviewed' ? 'Reviewed' : 'Pending'}
+                  label={
+                    report.status === 'reviewed'
+                      ? t('farmerDash.statusReviewed')
+                      : t('farmerDash.statusPending')
+                  }
                   color={report.status === 'reviewed' ? 'success' : 'warning'}
+                  sx={{ fontFamily: BILINGUAL_FONT }}
                 />
               </Stack>
 
@@ -799,8 +888,13 @@ export default function FarmerDashboard() {
 
               {report.symptoms && (
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Symptoms
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    gutterBottom
+                    sx={{ fontFamily: BILINGUAL_FONT }}
+                  >
+                    {t('farmerDash.symptoms')}
                   </Typography>
                   <Typography variant="body2" sx={{ fontFamily: BILINGUAL_FONT }}>
                     {report.symptoms}
@@ -827,19 +921,24 @@ export default function FarmerDashboard() {
           ) : null}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setReportOpen(false)}>Close</Button>
+          <Button
+            onClick={() => setReportOpen(false)}
+            sx={{ fontFamily: BILINGUAL_FONT }}
+          >
+            {t('farmerDash.close')}
+          </Button>
         </DialogActions>
       </Dialog>
 
       {/* Share dialog */}
       <Dialog open={shareOpen} onClose={() => setShareOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle sx={{ fontFamily: BILINGUAL_FONT }}>
-          Share with Officer / නිලධාරියාට යවන්න
+          {t('farmerDash.shareTitle')}
         </DialogTitle>
         <DialogContent>
           {shared ? (
             <Alert severity="success" sx={{ fontFamily: BILINGUAL_FONT }}>
-              Report shared successfully!
+              {t('farmerDash.shareSuccess')}
             </Alert>
           ) : (
             <>
@@ -849,15 +948,17 @@ export default function FarmerDashboard() {
                 </Alert>
               )}
               {officers.length === 0 ? (
-                <Typography color="text.secondary">
-                  No approved officers available.
+                <Typography color="text.secondary" sx={{ fontFamily: BILINGUAL_FONT }}>
+                  {t('farmerDash.noOfficers')}
                 </Typography>
               ) : (
                 <FormControl fullWidth sx={{ mt: 1 }}>
-                  <InputLabel id="share-officer-label">Select Officer</InputLabel>
+                  <InputLabel id="share-officer-label">
+                    {t('farmerDash.selectOfficer')}
+                  </InputLabel>
                   <Select
                     labelId="share-officer-label"
-                    label="Select Officer"
+                    label={t('farmerDash.selectOfficer')}
                     value={selectedOfficer}
                     onChange={(e) => setSelectedOfficer(e.target.value)}
                   >
@@ -873,16 +974,25 @@ export default function FarmerDashboard() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShareOpen(false)} disabled={sharing}>
-            Cancel
+          <Button
+            onClick={() => setShareOpen(false)}
+            disabled={sharing}
+            sx={{ fontFamily: BILINGUAL_FONT }}
+          >
+            {t('farmerDash.cancel')}
           </Button>
           {!shared && (
             <Button
               variant="contained"
               onClick={handleShare}
               disabled={sharing || officers.length === 0}
+              sx={{ fontFamily: BILINGUAL_FONT }}
             >
-              {sharing ? <CircularProgress size={20} color="inherit" /> : 'Share'}
+              {sharing ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
+                t('farmerDash.share')
+              )}
             </Button>
           )}
         </DialogActions>
@@ -922,7 +1032,11 @@ function StatCard({ icon, label, value, color = 'primary.main' }) {
             <Typography variant="h4" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
               {value ?? '—'}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ fontFamily: BILINGUAL_FONT }}
+            >
               {label}
             </Typography>
           </Box>
