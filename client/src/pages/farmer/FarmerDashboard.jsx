@@ -88,6 +88,12 @@ export default function FarmerDashboard() {
 
   const [profile, setProfile] = useState(null);
   const [chatSessions, setChatSessions] = useState([]);
+  // Chat sessions older than chatArchiveDays are hidden by default; the farmer
+  // can pull them in on demand. archivedChatCount is how many are tucked away.
+  const [archivedChatCount, setArchivedChatCount] = useState(0);
+  const [chatArchiveDays, setChatArchiveDays] = useState(30);
+  const [showAllChats, setShowAllChats] = useState(false);
+  const [loadingAllChats, setLoadingAllChats] = useState(false);
   const [diseaseReports, setDiseaseReports] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -130,6 +136,8 @@ export default function FarmerDashboard() {
         if (!active) return;
         setProfile(data.profile);
         setChatSessions(data.chat_sessions || []);
+        setArchivedChatCount(data.archived_chat_count || 0);
+        setChatArchiveDays(data.chat_archive_days || 30);
         setDiseaseReports(data.disease_reports || []);
         setBookmarks(data.bookmarks || []);
         setError('');
@@ -140,6 +148,22 @@ export default function FarmerDashboard() {
       active = false;
     };
   }, []);
+
+  // ---- Older chat sessions ----
+  // Pulls the full chat history (including sessions older than the archive
+  // window) and switches the Chat History tab to show everything.
+  async function loadOlderChats() {
+    setLoadingAllChats(true);
+    try {
+      const { data } = await api.get('/chat/history');
+      setChatSessions(data.sessions || []);
+      setShowAllChats(true);
+    } catch {
+      setToast('Could not load older chats');
+    } finally {
+      setLoadingAllChats(false);
+    }
+  }
 
   // ---- Profile editing ----
   // Pre-populates the dialog fields with the current profile values before opening.
@@ -391,12 +415,29 @@ export default function FarmerDashboard() {
             </Tabs>
 
             {/* --- Chat History tab --- */}
-            {tab === 0 &&
-              (chatSessions.length === 0 ? (
-                <EmptyState text="No chat sessions yet." />
-              ) : (
-                <Grid container spacing={2}>
-                  {chatSessions.map((s) => (
+            {tab === 0 && (
+              <>
+                {/* Explain that older chats are tucked away, not lost. */}
+                {!showAllChats && (
+                  <Alert severity="info" icon={<ChatIcon />} sx={{ mb: 2 }}>
+                    Showing chats from the last {chatArchiveDays} days. Older
+                    conversations are kept and can be reopened any time.
+                  </Alert>
+                )}
+
+                {chatSessions.length === 0 ? (
+                  <EmptyState
+                    text={
+                      archivedChatCount > 0 && !showAllChats
+                        ? `No chats in the last ${chatArchiveDays} days. You have ${archivedChatCount} older conversation${
+                            archivedChatCount === 1 ? '' : 's'
+                          } you can reopen below.`
+                        : 'No chat sessions yet.'
+                    }
+                  />
+                ) : (
+                  <Grid container spacing={2}>
+                    {chatSessions.map((s) => (
                     <Grid size={{ xs: 12, md: 6 }} key={s.id}>
                       <Card variant="outlined">
                         <CardContent>
@@ -448,18 +489,46 @@ export default function FarmerDashboard() {
                           </Stack>
                         </CardContent>
                       </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              ))}
+                      </Grid>
+                    ))}
+                  </Grid>
+                )}
+
+                {/* Reopen archived (older) conversations on demand. */}
+                {archivedChatCount > 0 && !showAllChats && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={
+                        loadingAllChats ? (
+                          <CircularProgress size={18} color="inherit" />
+                        ) : (
+                          <ChatIcon />
+                        )
+                      }
+                      disabled={loadingAllChats}
+                      onClick={loadOlderChats}
+                    >
+                      Show {archivedChatCount} older chat
+                      {archivedChatCount === 1 ? '' : 's'}
+                    </Button>
+                  </Box>
+                )}
+              </>
+            )}
 
             {/* --- Disease Reports tab --- */}
-            {tab === 1 &&
-              (diseaseReports.length === 0 ? (
-                <EmptyState text="No disease reports yet." />
-              ) : (
-                <Grid container spacing={2}>
-                  {diseaseReports.map((r) => (
+            {tab === 1 && (
+              <>
+                <Alert severity="success" icon={<BugReportIcon />} sx={{ mb: 2 }}>
+                  Your disease reports are kept permanently so you can track
+                  recurring problems season after season.
+                </Alert>
+                {diseaseReports.length === 0 ? (
+                  <EmptyState text="No disease reports yet." />
+                ) : (
+                  <Grid container spacing={2}>
+                    {diseaseReports.map((r) => (
                     <Grid size={{ xs: 12, md: 6 }} key={r.id}>
                       <Card variant="outlined">
                         <Stack direction="row">
@@ -528,11 +597,13 @@ export default function FarmerDashboard() {
                             </Stack>
                           </CardContent>
                         </Stack>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              ))}
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                )}
+              </>
+            )}
 
             {/* --- Bookmarks tab --- */}
             {tab === 2 && (
