@@ -2,6 +2,7 @@ const pool = require('../db/db');
 const { client: openai, model: AI_MODEL } = require('../utils/chatClient');
 const { openaiErrorResponse } = require('../utils/openaiError');
 const { withAIRetry } = require('../utils/aiRetry');
+const { getDistrictContext } = require('../utils/districtContext');
 
 const VALID_LANGUAGES = ['en', 'si'];
 
@@ -35,7 +36,25 @@ Keep formatting minimal and let clean paragraphs carry the answer:
 
 Priorities, in order: accuracy and usefulness, natural Sinhala/English communication, readability, minimal but effective formatting, and a professional user experience. Do not over-format.`;
 
-  return `You are AgriSL, an expert agricultural advisor for Sri Lanka. The farmer is asking about ${crop_type} cultivation in ${district} district. Be specific to Sri Lankan farming conditions.
+  const ctx = getDistrictContext(district);
+  const districtSection = ctx
+    ? `
+## ${district} District — Local Agricultural Context
+- Zone: ${ctx.zone}
+- Annual rainfall: ${ctx.rainfall}
+- Elevation: ${ctx.elevation}
+- Soils: ${ctx.soils}
+- Main crops grown here: ${ctx.mainCrops.join(', ')}
+- Growing seasons: ${ctx.seasons}
+- Key local challenges: ${ctx.challenges}
+- Irrigation: ${ctx.irrigation}
+- Notes: ${ctx.notes}
+
+Use this district data to give precise, locally relevant advice. Do not give generic Sri Lanka advice when district-specific guidance is possible. Tailor fertiliser schedules, pest warnings, irrigation advice, and variety recommendations to ${district}'s actual climate, soils, and seasons.`
+    : '';
+
+  return `You are AgriSL, an expert agricultural advisor for Sri Lanka. The farmer is asking about ${crop_type} cultivation in ${district} district.
+${districtSection}
 
 ${languageGuidance}
 ${styleGuidance}
