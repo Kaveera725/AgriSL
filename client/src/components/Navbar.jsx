@@ -140,18 +140,32 @@ export default function Navbar() {
     }
   }
 
-  // Marks a single notification read when clicked. Skips the API call if
-  // it is already read to avoid redundant network requests.
+  // Where a notification should take the user when clicked, keyed by type.
+  function destinationFor(notif) {
+    if (notif.type === 'new_officer_pending') return '/admin';
+    return null;
+  }
+
+  // Marks a single notification read when clicked, then navigates to the relevant
+  // page (e.g. admin panel for a pending-officer alert). Marking read is skipped
+  // for already-read items to avoid redundant network requests.
   async function handleItemClick(notif) {
-    if (notif.is_read) return;
-    try {
-      await api.patch(`/notifications/${notif.id}/read`);
-      setNotifications((list) =>
-        list.map((n) => (n.id === notif.id ? { ...n, is_read: 1 } : n))
-      );
-      setUnreadCount((c) => Math.max(0, c - 1));
-    } catch {
-      // ignore
+    if (!notif.is_read) {
+      try {
+        await api.patch(`/notifications/${notif.id}/read`);
+        setNotifications((list) =>
+          list.map((n) => (n.id === notif.id ? { ...n, is_read: 1 } : n))
+        );
+        setUnreadCount((c) => Math.max(0, c - 1));
+      } catch {
+        // ignore
+      }
+    }
+
+    const dest = destinationFor(notif);
+    if (dest) {
+      setAnchorEl(null);
+      navigate(dest);
     }
   }
 

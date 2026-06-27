@@ -17,6 +17,26 @@ const validFarmer = () => ({
   role: 'farmer',
 });
 
+// Officers register via multipart form data (certification fields + a document).
+// Returns the email used so callers can log in afterwards.
+function registerOfficer(overrides = {}) {
+  const email = overrides.email || uniqueEmail('officer');
+  const req = request(app)
+    .post('/api/auth/register')
+    .field('name', overrides.name || 'Nimal Officer')
+    .field('email', email)
+    .field('password', overrides.password || 'password123')
+    .field('district', overrides.district || 'Kandy')
+    .field('role', 'officer')
+    .field('gov_service_id', overrides.gov_service_id || 'AGR/2024/001234')
+    .field('designation', overrides.designation || 'Field Officer')
+    .field('province', overrides.province || 'Central');
+  if (!overrides.noDocument) {
+    req.attach('cert_document', Buffer.from('%PDF-1.4 fake certificate'), 'cert.pdf');
+  }
+  return { req, email };
+}
+
 describe('POST /api/auth/register', () => {
   test('valid farmer → 201, returns user without password', async () => {
     const res = await request(app).post('/api/auth/register').send(validFarmer());
@@ -47,14 +67,21 @@ describe('POST /api/auth/register', () => {
     expect(Array.isArray(res.body.errors)).toBe(true);
   });
 
-  test('as officer → is_approved = 0', async () => {
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({ ...validFarmer(), role: 'officer' });
+  test('as officer with certification → 201, is_approved = 0', async () => {
+    const { req } = registerOfficer();
+    const res = await req;
 
     expect(res.status).toBe(201);
     expect(res.body.user.role).toBe('officer');
     expect(res.body.user.is_approved).toBe(0);
+  });
+
+  test('officer without certification document → 400', async () => {
+    const { req } = registerOfficer({ noDocument: true });
+    const res = await req;
+
+    expect(res.status).toBe(400);
+    expect(Array.isArray(res.body.errors)).toBe(true);
   });
 });
 
@@ -85,12 +112,12 @@ describe('POST /api/auth/login', () => {
   });
 
   test('unapproved officer → 403', async () => {
-    const officer = { ...validFarmer(), role: 'officer' };
-    await request(app).post('/api/auth/register').send(officer);
+    const { req, email } = registerOfficer();
+    await req;
 
     const res = await request(app)
       .post('/api/auth/login')
-      .send({ email: officer.email, password: officer.password });
+      .send({ email, password: 'password123' });
 
     expect(res.status).toBe(403);
   });

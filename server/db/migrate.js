@@ -46,6 +46,43 @@ async function migrate() {
       'identified_species VARCHAR(255) AFTER image_path'
     );
 
+    // Officer certification fields (added for the officer verification flow).
+    await addColumnIfMissing(
+      'users',
+      'gov_service_id',
+      'gov_service_id VARCHAR(100) NULL AFTER district'
+    );
+    await addColumnIfMissing(
+      'users',
+      'designation',
+      'designation VARCHAR(150) NULL AFTER gov_service_id'
+    );
+    await addColumnIfMissing(
+      'users',
+      'province',
+      'province VARCHAR(100) NULL AFTER designation'
+    );
+    await addColumnIfMissing(
+      'users',
+      'cert_document_path',
+      'cert_document_path VARCHAR(255) NULL AFTER province'
+    );
+    await addColumnIfMissing(
+      'users',
+      'rejection_reason',
+      'rejection_reason TEXT NULL AFTER cert_document_path'
+    );
+    await addColumnIfMissing(
+      'users',
+      'deactivation_reason',
+      'deactivation_reason TEXT NULL AFTER rejection_reason'
+    );
+    await addColumnIfMissing(
+      'users',
+      'is_active',
+      'is_active TINYINT NOT NULL DEFAULT 1 AFTER is_approved'
+    );
+
     // Seed users (idempotent — skip if the email already exists).
     const users = [
       { name: 'Admin', email: 'admin@agrisl.lk', password: 'admin123', role: 'admin', district: 'Colombo', is_approved: 1 },

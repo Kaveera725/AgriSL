@@ -16,6 +16,12 @@ async function getStats(req, res) {
     const [[{ pending_officers }]] = await pool.query(
       "SELECT COUNT(*) AS pending_officers FROM users WHERE role = 'officer' AND is_approved = 0"
     );
+    const [[{ approved_officers }]] = await pool.query(
+      "SELECT COUNT(*) AS approved_officers FROM users WHERE role = 'officer' AND is_approved = 1"
+    );
+    const [[{ rejected_officers }]] = await pool.query(
+      "SELECT COUNT(*) AS rejected_officers FROM users WHERE role = 'officer' AND is_approved = 2"
+    );
     const [[{ total_chat_sessions }]] = await pool.query(
       'SELECT COUNT(*) AS total_chat_sessions FROM chat_sessions'
     );
@@ -34,6 +40,8 @@ async function getStats(req, res) {
       total_farmers,
       total_officers,
       pending_officers,
+      approved_officers,
+      rejected_officers,
       total_chat_sessions,
       total_disease_reports,
       total_articles,
@@ -76,7 +84,9 @@ async function getUsers(req, res) {
 
     // limit/offset are validated integers, safe to interpolate.
     const [users] = await pool.query(
-      `SELECT id, name, email, role, district, is_approved, created_at
+      `SELECT id, name, email, role, district, is_approved, created_at,
+              gov_service_id, designation, province, cert_document_path, rejection_reason,
+              deactivation_reason
        FROM users
        ${whereClause}
        ORDER BY created_at DESC
@@ -102,8 +112,9 @@ async function approveOfficer(req, res) {
   const userId = req.params.id;
 
   try {
+    // Approving clears any prior rejection reason so the record is clean.
     const [result] = await pool.query(
-      "UPDATE users SET is_approved = 1 WHERE id = ? AND role = 'officer'",
+      "UPDATE users SET is_approved = 1, rejection_reason = NULL WHERE id = ? AND role = 'officer'",
       [userId]
     );
     if (result.affectedRows === 0) {
@@ -126,37 +137,40 @@ async function approveOfficer(req, res) {
   }
 }
 
-// PATCH /api/admin/users/:id/role  (requireAdmin)
-// Switch a user between farmer and officer. Admins cannot be re-roled.
-async function changeUserRole(req, res) {
+// PATCH /api/admin/users/:id/reject  (requireAdmin)
+// Reject a pending officer with a required reason and notify them.
+async function rejectOfficer(req, res) {
   const userId = req.params.id;
-  const { role } = req.body;
+  const { reason } = req.body;
 
-  if (!['farmer', 'officer'].includes(role)) {
-    return res.status(400).json({ message: "role must be 'farmer' or 'officer'" });
+  if (!reason || !reason.trim()) {
+    return res.status(400).json({ message: 'A rejection reason is required' });
   }
 
   try {
     const [rows] = await pool.query('SELECT role FROM users WHERE id = ?', [userId]);
     const user = rows[0];
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    if (user.role === 'admin') {
-      return res.status(403).json({ message: 'Cannot change an admin role' });
+    if (!user || user.role !== 'officer') {
+      return res.status(404).json({ message: 'Officer not found' });
     }
 
-    // Promoting to officer activates them immediately; farmers are always approved.
-    const isApproved = 1;
-    await pool.query('UPDATE users SET role = ?, is_approved = ? WHERE id = ?', [
-      role,
-      isApproved,
+    await pool.query('UPDATE users SET is_approved = 2, rejection_reason = ? WHERE id = ?', [
+      reason.trim(),
       userId,
     ]);
 
+    await pool.query(
+      `INSERT INTO notifications (user_id, type, message)
+       VALUES (?, 'account_rejected', ?)`,
+      [
+        userId,
+        `Your agricultural officer registration was not approved. Reason: ${reason.trim()}. Please contact the administrator if you believe this is an error.`,
+      ]
+    );
+
     return res.json({ success: true });
   } catch (err) {
-    console.error('changeUserRole error:', err.message);
+    console.error('rejectOfficer error:', err.message);
     return res.status(500).json({ message: 'Server error' });
   }
 }
@@ -239,14 +253,20 @@ async function getAllReports(req, res) {
 }
 
 // PATCH /api/admin/users/:id/deactivate  (requireAdmin)
-// Soft-deactivate a user by demoting to an unapproved farmer. Admins cannot
-// deactivate themselves.
+// Soft-deactivate a user by demoting to an unapproved farmer. The admin must
+// supply a reason, which is stored on the user and sent to them as a
+// notification. Admins cannot deactivate themselves.
 async function deleteUser(req, res) {
   const userId = req.params.id;
+  const { reason } = req.body;
 
   // req.user.id is a number; route param is a string — compare loosely.
   if (Number(userId) === Number(req.user.id)) {
     return res.status(400).json({ message: 'You cannot deactivate your own account' });
+  }
+
+  if (!reason || !reason.trim()) {
+    return res.status(400).json({ message: 'A reason for deactivation is required' });
   }
 
   try {
@@ -256,9 +276,19 @@ async function deleteUser(req, res) {
     }
 
     await pool.query(
-      "UPDATE users SET role = 'farmer', is_approved = 0 WHERE id = ?",
-      [userId]
+      "UPDATE users SET role = 'farmer', is_approved = 0, is_active = 0, deactivation_reason = ? WHERE id = ?",
+      [reason.trim(), userId]
     );
+
+    await pool.query(
+      `INSERT INTO notifications (user_id, type, message)
+       VALUES (?, 'account_deactivated', ?)`,
+      [
+        userId,
+        `Your AgriSL account has been deactivated by an administrator. Reason: ${reason.trim()}. Please contact the administrator if you believe this is an error.`,
+      ]
+    );
+
     return res.json({ success: true });
   } catch (err) {
     console.error('deleteUser error:', err.message);
@@ -270,7 +300,7 @@ module.exports = {
   getStats,
   getUsers,
   approveOfficer,
-  changeUserRole,
+  rejectOfficer,
   getAllArticles,
   getAllReports,
   deleteUser,

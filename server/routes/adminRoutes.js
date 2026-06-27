@@ -5,7 +5,7 @@ const {
   getStats,
   getUsers,
   approveOfficer,
-  changeUserRole,
+  rejectOfficer,
   getAllArticles,
   getAllReports,
   deleteUser,
@@ -15,7 +15,7 @@ const {
 router.get('/stats', requireAdmin, getStats);
 router.get('/users', requireAdmin, getUsers);
 router.patch('/users/:id/approve', requireAdmin, approveOfficer);
-router.patch('/users/:id/role', requireAdmin, changeUserRole);
+router.patch('/users/:id/reject', requireAdmin, rejectOfficer);
 router.get('/articles', requireAdmin, getAllArticles);
 router.get('/reports', requireAdmin, getAllReports);
 router.patch('/users/:id/deactivate', requireAdmin, deleteUser);

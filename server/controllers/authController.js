@@ -20,6 +20,8 @@ function publicUser(u) {
 async function register(req, res) {
   const { name, email, password, district } = req.body;
   let { role } = req.body;
+  // Officer-only certification fields (sent as multipart form fields).
+  const { gov_service_id, designation, province } = req.body;
 
   // Validation
   const errors = [];
@@ -34,12 +36,24 @@ async function register(req, res) {
     errors.push("Role must be 'farmer' or 'officer'");
   }
 
+  // Officers must supply certification details and an uploaded document.
+  if (role === 'officer') {
+    if (!gov_service_id || !gov_service_id.trim()) errors.push('Government service ID is required');
+    if (!designation || !designation.trim()) errors.push('Designation is required');
+    if (!province || !province.trim()) errors.push('Province is required');
+    if (!req.file) errors.push('Certification document is required for officer registration');
+  }
+
   if (errors.length) {
     return res.status(400).json({ message: 'Validation failed', errors });
   }
 
   // Officers require admin approval; farmers are approved immediately.
   const isApproved = role === 'officer' ? 0 : 1;
+  const certPath = role === 'officer' && req.file ? req.file.filename : null;
+  const govServiceId = role === 'officer' ? gov_service_id.trim() : null;
+  const officerDesignation = role === 'officer' ? designation.trim() : null;
+  const officerProvince = role === 'officer' ? province.trim() : null;
 
   try {
     const existing = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
@@ -49,10 +63,36 @@ async function register(req, res) {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
-      `INSERT INTO users (name, email, password_hash, role, district, is_approved)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [name.trim(), email, passwordHash, role, district.trim(), isApproved]
+      `INSERT INTO users
+         (name, email, password_hash, role, district, is_approved,
+          gov_service_id, designation, province, cert_document_path)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        name.trim(),
+        email,
+        passwordHash,
+        role,
+        district.trim(),
+        isApproved,
+        govServiceId,
+        officerDesignation,
+        officerProvince,
+        certPath,
+      ]
     );
+
+    // Notify every admin that a new officer is awaiting verification.
+    if (role === 'officer') {
+      const [admins] = await pool.query("SELECT id FROM users WHERE role = 'admin'");
+      if (admins.length) {
+        const message = `New agricultural officer registration pending approval: ${name.trim()} (${officerDesignation}) from ${officerProvince} province. Government Service ID: ${govServiceId}`;
+        const values = admins.map((a) => [a.id, 'new_officer_pending', message, result.insertId]);
+        await pool.query(
+          'INSERT INTO notifications (user_id, type, message, related_id) VALUES ?',
+          [values]
+        );
+      }
+    }
 
     const user = {
       id: result.insertId,
@@ -96,8 +136,24 @@ async function login(req, res) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
+    // Deactivated accounts cannot log in, regardless of role.
+    if (user.is_active === 0) {
+      return res.status(403).json({
+        message: `Your account has been deactivated. Reason: ${
+          user.deactivation_reason || 'Please contact the administrator for details.'
+        }`,
+      });
+    }
+
+    if (user.role === 'officer' && user.is_approved === 2) {
+      return res.status(403).json({
+        message: `Your officer registration was rejected. Reason: ${
+          user.rejection_reason || 'Please contact the administrator for details.'
+        }`,
+      });
+    }
     if (user.role === 'officer' && user.is_approved === 0) {
-      return res.status(403).json({ message: 'Account pending admin approval' });
+      return res.status(403).json({ message: 'Your account is pending admin approval.' });
     }
 
     const token = jwt.sign(

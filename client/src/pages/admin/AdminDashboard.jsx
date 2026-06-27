@@ -1,5 +1,6 @@
 // Admin panel — platform overview stat cards plus three management tabs:
-//   Users    — search/filter, approve officers, change roles, deactivate accounts.
+//   Users    — search/filter, review & approve/reject officer applications,
+//              deactivate accounts (with a required reason).
 //   Articles — every advisory article in all statuses with a link to read it.
 //   Reports  — every disease report with a detail dialog showing the image.
 import { useCallback, useEffect, useState } from 'react';
@@ -24,6 +25,7 @@ import {
   MenuItem,
   Rating,
   Select,
+  Snackbar,
   Tab,
   Table,
   TableBody,
@@ -44,6 +46,7 @@ import AgricultureIcon from '@mui/icons-material/Agriculture';
 import BadgeIcon from '@mui/icons-material/Badge';
 import ArticleIcon from '@mui/icons-material/Article';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
@@ -70,6 +73,13 @@ const ROLE_CHIP = {
   admin: 'error',
   officer: 'primary',
   farmer: 'default',
+};
+
+// Officer approval state → chip styling (is_approved: 0 pending, 1 approved, 2 rejected).
+const OFFICER_STATUS_CHIP = {
+  0: { color: 'warning', label: 'Pending' },
+  1: { color: 'success', label: 'Approved' },
+  2: { color: 'error', label: 'Rejected' },
 };
 
 const CONFIDENCE_COLOR = { High: 'success', Medium: 'warning', Low: 'error' };
@@ -132,6 +142,24 @@ export default function AdminDashboard() {
 
   // Deactivate confirm dialog
   const [confirmUser, setConfirmUser] = useState(null);
+  const [deactivateReason, setDeactivateReason] = useState('');
+
+  // Officer certification review dialog
+  const [certOfficer, setCertOfficer] = useState(null); // officer whose cert is open
+  const [certUrl, setCertUrl] = useState(null); // object URL of fetched document
+  const [certIsPdf, setCertIsPdf] = useState(false);
+  const [certLoading, setCertLoading] = useState(false);
+  const [certError, setCertError] = useState('');
+
+  // Rejection dialog
+  const [rejectTarget, setRejectTarget] = useState(null); // officer being rejected
+  const [rejectReason, setRejectReason] = useState('');
+
+  // "View Reason" dialog for already-rejected officers
+  const [reasonView, setReasonView] = useState(null);
+
+  // Lightweight success toast
+  const [snackbar, setSnackbar] = useState('');
 
   // Articles tab state (lazy-loaded on first visit)
   const [articles, setArticles] = useState([]);
@@ -179,6 +207,8 @@ export default function AdminDashboard() {
     setActioningId(id);
     try {
       await api.patch(`/admin/users/${id}/approve`);
+      closeCert();
+      setSnackbar('Officer approved');
       loadUsers();
       loadStats();
     } catch {
@@ -188,26 +218,65 @@ export default function AdminDashboard() {
     }
   }
 
-  async function handleRoleChange(id, role) {
+  // ---- Officer certification review ----
+  // Fetch the certification document through the admin-only API as a blob so the
+  // JWT travels in the Authorization header (a plain <img>/<iframe> src can't).
+  async function openCert(officer) {
+    setCertOfficer(officer);
+    setCertError('');
+    setCertUrl(null);
+    if (!officer.cert_document_path) return;
+    const isPdf = /\.pdf$/i.test(officer.cert_document_path);
+    setCertIsPdf(isPdf);
+    setCertLoading(true);
+    try {
+      const { data } = await api.get(`/auth/cert/${officer.cert_document_path}`, {
+        responseType: 'blob',
+      });
+      setCertUrl(URL.createObjectURL(data));
+    } catch {
+      setCertError('Could not load the certification document.');
+    } finally {
+      setCertLoading(false);
+    }
+  }
+
+  function closeCert() {
+    if (certUrl) URL.revokeObjectURL(certUrl);
+    setCertUrl(null);
+    setCertOfficer(null);
+    setCertError('');
+  }
+
+  async function confirmReject() {
+    if (!rejectTarget || !rejectReason.trim()) return;
+    const id = rejectTarget.id;
     setActioningId(id);
     try {
-      await api.patch(`/admin/users/${id}/role`, { role });
+      await api.patch(`/admin/users/${id}/reject`, { reason: rejectReason.trim() });
+      setRejectTarget(null);
+      setRejectReason('');
+      closeCert();
+      setSnackbar('Application rejected');
       loadUsers();
       loadStats();
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not change role.');
+      setError(err.response?.data?.message || 'Could not reject officer.');
     } finally {
       setActioningId(null);
     }
   }
 
   async function handleDeactivate() {
-    if (!confirmUser) return;
+    if (!confirmUser || !deactivateReason.trim()) return;
     const id = confirmUser.id;
     setActioningId(id);
     try {
-      await api.patch(`/admin/users/${id}/deactivate`);
+      await api.patch(`/admin/users/${id}/deactivate`, {
+        reason: deactivateReason.trim(),
+      });
       setConfirmUser(null);
+      setDeactivateReason('');
       loadUsers();
       loadStats();
     } catch (err) {
@@ -327,6 +396,14 @@ export default function AdminDashboard() {
               color="warning.main"
             />
           </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <StatCard
+              icon={<CancelIcon fontSize="large" />}
+              label="Rejected Officers"
+              value={stats?.rejected_officers}
+              color="error.main"
+            />
+          </Grid>
         </Grid>
 
         {/* Stat cards — row 2: activity */}
@@ -372,12 +449,12 @@ export default function AdminDashboard() {
             sx={{ mb: 2 }}
             action={
               <Button color="inherit" size="small" onClick={() => setTab(0)}>
-                Review
+                Review Now
               </Button>
             }
           >
-            {stats.pending_officers} officer account
-            {stats.pending_officers === 1 ? '' : 's'} awaiting approval
+            ⚠️ {stats.pending_officers} officer application
+            {stats.pending_officers === 1 ? '' : 's'} awaiting your review.
           </Alert>
         )}
 
@@ -438,7 +515,7 @@ export default function AdminDashboard() {
                       <TableCell>Email</TableCell>
                       <TableCell>Role</TableCell>
                       <TableCell>District</TableCell>
-                      <TableCell>Approved</TableCell>
+                      <TableCell>Status</TableCell>
                       <TableCell>Joined</TableCell>
                       <TableCell align="right">Actions</TableCell>
                     </TableRow>
@@ -471,7 +548,17 @@ export default function AdminDashboard() {
                               />
                             </TableCell>
                             <TableCell>{u.district || '—'}</TableCell>
-                            <TableCell>{u.is_approved ? 'Yes' : 'No'}</TableCell>
+                            <TableCell>
+                              {u.role === 'officer' ? (
+                                <Chip
+                                  size="small"
+                                  label={(OFFICER_STATUS_CHIP[u.is_approved] || {}).label || 'Unknown'}
+                                  color={(OFFICER_STATUS_CHIP[u.is_approved] || {}).color || 'default'}
+                                />
+                              ) : (
+                                u.is_approved ? 'Yes' : 'No'
+                              )}
+                            </TableCell>
                             <TableCell>{formatDate(u.created_at)}</TableCell>
                             <TableCell align="right">
                               <Stack
@@ -483,27 +570,23 @@ export default function AdminDashboard() {
                                 {pending && (
                                   <Button
                                     size="small"
-                                    variant="contained"
-                                    color="success"
+                                    variant="outlined"
+                                    color="info"
                                     disabled={busy}
-                                    onClick={() => handleApprove(u.id)}
+                                    onClick={() => openCert(u)}
                                   >
-                                    Approve
+                                    View Certificate
                                   </Button>
                                 )}
-                                {u.role !== 'admin' && (
-                                  <FormControl size="small" sx={{ minWidth: 110 }}>
-                                    <Select
-                                      value={u.role}
-                                      disabled={busy}
-                                      onChange={(e) =>
-                                        handleRoleChange(u.id, e.target.value)
-                                      }
-                                    >
-                                      <MenuItem value="farmer">Farmer</MenuItem>
-                                      <MenuItem value="officer">Officer</MenuItem>
-                                    </Select>
-                                  </FormControl>
+                                {u.role === 'officer' && u.is_approved === 2 && (
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="error"
+                                    onClick={() => setReasonView(u)}
+                                  >
+                                    View Reason
+                                  </Button>
                                 )}
                                 {u.role !== 'admin' && !isSelf && (
                                   <Button
@@ -679,23 +762,48 @@ export default function AdminDashboard() {
       </Container>
 
       {/* Deactivate confirm dialog */}
-      <Dialog open={!!confirmUser} onClose={() => setConfirmUser(null)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={!!confirmUser}
+        onClose={() => {
+          setConfirmUser(null);
+          setDeactivateReason('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Deactivate user</DialogTitle>
         <DialogContent>
-          <Typography>
+          <Typography sx={{ mb: 2 }}>
             Deactivate <strong>{confirmUser?.name}</strong>? Their account will be demoted
             to an unapproved farmer and lose officer/admin access.
           </Typography>
+          <TextField
+            label="Reason for deactivation"
+            placeholder="e.g. Account suspended for violating platform guidelines."
+            fullWidth
+            required
+            multiline
+            minRows={3}
+            value={deactivateReason}
+            onChange={(e) => setDeactivateReason(e.target.value)}
+            helperText="This reason is sent to the user as a notification."
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmUser(null)} disabled={actioningId === confirmUser?.id}>
+          <Button
+            onClick={() => {
+              setConfirmUser(null);
+              setDeactivateReason('');
+            }}
+            disabled={actioningId === confirmUser?.id}
+          >
             Cancel
           </Button>
           <Button
             variant="contained"
             color="error"
             onClick={handleDeactivate}
-            disabled={actioningId === confirmUser?.id}
+            disabled={!deactivateReason.trim() || actioningId === confirmUser?.id}
           >
             {actioningId === confirmUser?.id ? (
               <CircularProgress size={20} color="inherit" />
@@ -796,6 +904,167 @@ export default function AdminDashboard() {
           <Button onClick={() => setReportView(null)}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Officer certification review dialog */}
+      <Dialog open={!!certOfficer} onClose={closeCert} fullWidth maxWidth="md">
+        <DialogTitle>Officer Certification Review</DialogTitle>
+        <DialogContent dividers>
+          {certOfficer && (
+            <Box>
+              <Grid container spacing={1} sx={{ mb: 2 }}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography variant="caption" color="text.secondary">Name</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{certOfficer.name}</Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography variant="caption" color="text.secondary">Email</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{certOfficer.email}</Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography variant="caption" color="text.secondary">Government Service ID</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{certOfficer.gov_service_id || '—'}</Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography variant="caption" color="text.secondary">Designation</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{certOfficer.designation || '—'}</Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography variant="caption" color="text.secondary">Province</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{certOfficer.province || '—'}</Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography variant="caption" color="text.secondary">District</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{certOfficer.district || '—'}</Typography>
+                </Grid>
+              </Grid>
+
+              <Divider sx={{ mb: 2 }} />
+
+              {certError && <Alert severity="error" sx={{ mb: 2 }}>{certError}</Alert>}
+
+              {certLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : certUrl ? (
+                certIsPdf ? (
+                  <Box
+                    component="iframe"
+                    title="Certification document"
+                    src={certUrl}
+                    sx={{ width: '100%', height: 500, border: 0 }}
+                  />
+                ) : (
+                  <Box
+                    component="img"
+                    src={certUrl}
+                    alt="Certification document"
+                    sx={{ width: '100%', maxHeight: 500, objectFit: 'contain' }}
+                  />
+                )
+              ) : (
+                !certError && (
+                  <Typography color="text.secondary" align="center" sx={{ py: 2 }}>
+                    No document available.
+                  </Typography>
+                )
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeCert}>Close</Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={actioningId === certOfficer?.id}
+            onClick={() => {
+              setRejectReason('');
+              setRejectTarget(certOfficer);
+            }}
+          >
+            Reject
+          </Button>
+          <Button
+            variant="contained"
+            color="success"
+            disabled={actioningId === certOfficer?.id}
+            onClick={() => handleApprove(certOfficer.id)}
+          >
+            {actioningId === certOfficer?.id ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              'Approve'
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reject officer dialog */}
+      <Dialog
+        open={!!rejectTarget}
+        onClose={() => setRejectTarget(null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Reject Officer Application</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Rejecting <strong>{rejectTarget?.name}</strong>. The reason below is sent to
+            the officer.
+          </Typography>
+          <TextField
+            label="Reason for rejection"
+            placeholder="e.g. Could not verify the submitted certification document. Please resubmit with a valid government-issued credential."
+            fullWidth
+            required
+            multiline
+            minRows={3}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectTarget(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={!rejectReason.trim() || actioningId === rejectTarget?.id}
+            onClick={confirmReject}
+          >
+            {actioningId === rejectTarget?.id ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              'Confirm Rejection'
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* View rejection reason dialog */}
+      <Dialog open={!!reasonView} onClose={() => setReasonView(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Rejection Reason</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            {reasonView?.rejection_reason || 'No reason was recorded.'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReasonView(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Success toast */}
+      <Snackbar
+        open={!!snackbar}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="success" onClose={() => setSnackbar('')} sx={{ width: '100%' }}>
+          {snackbar}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

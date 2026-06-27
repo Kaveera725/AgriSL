@@ -15,9 +15,21 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('farmer', 'officer', 'admin') NOT NULL DEFAULT 'farmer',
   district VARCHAR(100),
-  -- Officers require admin approval, so they default to 0 at signup.
+  -- Officer certification details (collected at officer sign-up; NULL for farmers/admins).
+  gov_service_id VARCHAR(100) NULL,        -- government service ID number
+  designation VARCHAR(150) NULL,           -- e.g. "Agricultural Instructor", "Field Officer"
+  province VARCHAR(100) NULL,              -- province the officer works in
+  cert_document_path VARCHAR(255) NULL,    -- uploaded certification file (in uploads/certifications/)
+  rejection_reason TEXT NULL,             -- admin-supplied reason when an officer is rejected
+  deactivation_reason TEXT NULL,          -- admin-supplied reason when an account is deactivated
+  -- Officer approval state (TINYINT used as a tri-state):
+  --   0 = pending  (default for officers; signup logic sets this)
+  --   1 = approved (default for farmers; admin-set for officers)
+  --   2 = rejected (admin can reject with rejection_reason)
   -- Column default is 1; the signup logic sets 0 for officers.
   is_approved TINYINT NOT NULL DEFAULT 1,
+  -- Account active flag: 1 = can log in, 0 = deactivated by admin (login blocked).
+  is_active TINYINT NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
