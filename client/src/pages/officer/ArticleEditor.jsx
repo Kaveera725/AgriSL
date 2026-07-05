@@ -98,9 +98,14 @@ export default function ArticleEditor() {
   // "Publish" button hardcodes 'published' without waiting for the dropdown state update.
   async function save(targetStatus) {
     setError('');
-    if (!titleEn.trim() || !contentEn.trim()) {
+    // Valid if there is a complete title + content pair in at least one language,
+    // so an officer can publish English-only, Sinhala-only, or bilingual articles.
+    const hasEn = titleEn.trim() && contentEn.trim();
+    const hasSi = titleSi.trim() && contentSi.trim();
+    if (!hasEn && !hasSi) {
       setError(t('articleEditor.errRequired'));
-      setTab(0);
+      // Point the officer at whichever tab they already started filling in.
+      setTab(titleSi.trim() || contentSi.trim() ? 1 : 0);
       return;
     }
 

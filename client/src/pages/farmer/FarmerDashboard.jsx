@@ -687,7 +687,7 @@ export default function FarmerDashboard() {
                   <Grid container spacing={2}>
                     {bookmarks.map((b) => {
                       const title =
-                        bmLang === 'si' ? b.title_si || b.title_en : b.title_en;
+                        bmLang === 'si' ? b.title_si || b.title_en : b.title_en || b.title_si;
                       const cat = CATEGORY_LABEL[b.category];
                       const categoryLabel = cat ? cat[bmLang] || cat.en : b.category;
                       return (

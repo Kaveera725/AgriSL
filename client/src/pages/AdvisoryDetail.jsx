@@ -133,9 +133,13 @@ export default function AdvisoryDetail() {
     }
   }
 
-  const title = article && (lang === 'si' ? article.title_si || article.title_en : article.title_en);
+  const title =
+    article && (lang === 'si' ? article.title_si || article.title_en : article.title_en || article.title_si);
   const content =
-    article && (lang === 'si' ? article.content_si || article.content_en : article.content_en);
+    article &&
+    (lang === 'si'
+      ? article.content_si || article.content_en
+      : article.content_en || article.content_si);
   const categoryLabel =
     article && CATEGORY_LABEL[article.category]
       ? CATEGORY_LABEL[article.category][lang] || CATEGORY_LABEL[article.category].en

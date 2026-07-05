@@ -25,8 +25,14 @@ async function notifyFarmers(titleEn, articleId) {
 async function createArticle(req, res) {
   const { title_en, title_si, content_en, content_si, category, tags, status } = req.body;
 
-  if (!title_en || !title_en.trim() || !content_en || !content_en.trim()) {
-    return res.status(400).json({ message: 'title_en and content_en are required' });
+  // An article is valid if it has a complete title+content pair in at least one
+  // language, so officers can publish English-only, Sinhala-only, or bilingual.
+  const hasEn = Boolean(title_en && title_en.trim() && content_en && content_en.trim());
+  const hasSi = Boolean(title_si && title_si.trim() && content_si && content_si.trim());
+  if (!hasEn && !hasSi) {
+    return res.status(400).json({
+      message: 'A complete title and content in at least one language (English or Sinhala) are required',
+    });
   }
 
   const cat = VALID_CATEGORIES.includes(category) ? category : 'general';
@@ -52,7 +58,7 @@ async function createArticle(req, res) {
 
     // Only notify farmers when the article goes live, never on a draft.
     if (articleStatus === 'published') {
-      await notifyFarmers(title_en, result.insertId);
+      await notifyFarmers(title_en || title_si, result.insertId);
     }
 
     return res.status(201).json({
@@ -89,27 +95,42 @@ async function updateArticle(req, res) {
     const values = [];
     const body = req.body;
 
+    // Resolve the article's language fields *after* this update (provided value
+    // wins, otherwise keep the stored value) so we can enforce that at least one
+    // complete language pair survives — English-only, Sinhala-only, or both.
+    const trimOrNull = (v) => (v && v.trim() ? v.trim() : null);
+    const nextTitleEn =
+      body.title_en !== undefined ? trimOrNull(body.title_en) : article.title_en;
+    const nextTitleSi =
+      body.title_si !== undefined ? trimOrNull(body.title_si) : article.title_si;
+    const nextContentEn =
+      body.content_en !== undefined ? trimOrNull(body.content_en) : article.content_en;
+    const nextContentSi =
+      body.content_si !== undefined ? trimOrNull(body.content_si) : article.content_si;
+
+    const hasEn = Boolean(nextTitleEn && nextContentEn);
+    const hasSi = Boolean(nextTitleSi && nextContentSi);
+    if (!hasEn && !hasSi) {
+      return res.status(400).json({
+        message: 'A complete title and content in at least one language (English or Sinhala) are required',
+      });
+    }
+
     if (body.title_en !== undefined) {
-      if (!body.title_en || !body.title_en.trim()) {
-        return res.status(400).json({ message: 'title_en cannot be empty' });
-      }
       fields.push('title_en = ?');
-      values.push(body.title_en);
+      values.push(nextTitleEn);
     }
     if (body.title_si !== undefined) {
       fields.push('title_si = ?');
-      values.push(body.title_si || null);
+      values.push(nextTitleSi);
     }
     if (body.content_en !== undefined) {
-      if (!body.content_en || !body.content_en.trim()) {
-        return res.status(400).json({ message: 'content_en cannot be empty' });
-      }
       fields.push('content_en = ?');
-      values.push(body.content_en);
+      values.push(nextContentEn);
     }
     if (body.content_si !== undefined) {
       fields.push('content_si = ?');
-      values.push(body.content_si || null);
+      values.push(nextContentSi);
     }
     if (body.category !== undefined) {
       if (!VALID_CATEGORIES.includes(body.category)) {
@@ -147,7 +168,7 @@ async function updateArticle(req, res) {
     );
 
     if (willPublish) {
-      await notifyFarmers(body.title_en || article.title_en, articleId);
+      await notifyFarmers(nextTitleEn || nextTitleSi, articleId);
     }
 
     const [updated] = await pool.query('SELECT * FROM advisory_articles WHERE id = ?', [

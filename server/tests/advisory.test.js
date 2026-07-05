@@ -50,6 +50,36 @@ describe('POST /api/advisory (authoring)', () => {
     );
     expect(article.status).toBe('draft');
   });
+
+  test('as officer, Sinhala-only → 201', async () => {
+    const off = await officer();
+    const res = await request(app)
+      .post('/api/advisory')
+      .set('Authorization', `Bearer ${off.token}`)
+      .send({ title_si: 'වී වගාව', content_si: 'වී වගාව රැකබලා ගැනීම' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.article_id).toBeDefined();
+
+    const [[article]] = await pool.query(
+      'SELECT title_en, content_en, title_si FROM advisory_articles WHERE id = ?',
+      [res.body.article_id]
+    );
+    expect(article.title_en).toBeNull();
+    expect(article.content_en).toBeNull();
+    expect(article.title_si).toBe('වී වගාව');
+  });
+
+  test('as officer, no complete language pair → 400', async () => {
+    const off = await officer();
+    const res = await request(app)
+      .post('/api/advisory')
+      .set('Authorization', `Bearer ${off.token}`)
+      // Sinhala title but no content in either language.
+      .send({ title_si: 'මාතෘකාව පමණි' });
+
+    expect(res.status).toBe(400);
+  });
 });
 
 describe('PUT /api/advisory/:id', () => {

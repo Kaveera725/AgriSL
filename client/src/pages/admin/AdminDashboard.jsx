@@ -648,7 +648,7 @@ export default function AdminDashboard() {
                       };
                       return (
                         <TableRow key={a.id}>
-                          <TableCell>{a.title_en}</TableCell>
+                          <TableCell>{a.title_en || a.title_si}</TableCell>
                           <TableCell>{a.officer_name}</TableCell>
                           <TableCell>{CATEGORY_LABEL[a.category] || a.category}</TableCell>
                           <TableCell>

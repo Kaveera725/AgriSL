@@ -286,7 +286,7 @@ export default function OfficerDashboard() {
                         const chip = STATUS_CHIP[a.status] || { color: 'default', label: a.status };
                         return (
                           <TableRow key={a.id} hover>
-                            <TableCell sx={{ maxWidth: 260 }}>{a.title_en}</TableCell>
+                            <TableCell sx={{ maxWidth: 260 }}>{a.title_en || a.title_si}</TableCell>
                             <TableCell>{CATEGORY_LABEL[a.category] || a.category}</TableCell>
                             <TableCell>
                               <Chip size="small" label={chip.label} color={chip.color} />

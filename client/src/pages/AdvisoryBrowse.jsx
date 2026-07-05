@@ -207,7 +207,7 @@ export default function AdvisoryBrowse() {
           <>
             <Grid container spacing={3}>
               {articles.map((a) => {
-                const title = lang === 'si' ? a.title_si || a.title_en : a.title_en;
+                const title = lang === 'si' ? a.title_si || a.title_en : a.title_en || a.title_si;
                 return (
                   <Grid size={{ xs: 12, sm: 6, md: 4 }} key={a.id}>
                     <Card
