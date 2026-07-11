@@ -2,7 +2,7 @@
 // view count server-side. Authenticated farmers can rate (requires a prior chat or
 // disease-report activity) and bookmark the article.
 import { useEffect, useState } from 'react';
-import { Link as RouterLink, useParams } from 'react-router-dom';
+import { Link as RouterLink, useParams, useNavigate } from 'react-router-dom';
 import {
   Alert,
   AppBar,
@@ -47,7 +47,8 @@ const CATEGORY_LABEL = {
 
 export default function AdvisoryDetail() {
   const { id } = useParams();
-  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
   // Article language follows the global UI toggle (floating EN/සිං switcher).
   const { lang } = useLanguage();
 
@@ -133,6 +134,28 @@ export default function AdvisoryDetail() {
     }
   }
 
+  async function handleDelete() {
+    const confirmMsg =
+      lang === 'si'
+        ? 'මෙම ලිපිය ස්ථිරවම මකා දැමීමට ඔබට විශ්වාසද? මෙම ක්‍රියාව ආපසු හැරවිය නොහැක.'
+        : 'Are you sure you want to permanently delete this article? This action cannot be undone.';
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await api.delete(`/advisory/${id}`);
+      setToast(
+        lang === 'si'
+          ? 'ලිපිය සාර්ථකව මකා දමන ලදී'
+          : 'Article deleted successfully'
+      );
+      setTimeout(() => {
+        navigate(user?.role === 'admin' ? '/admin' : '/advisory');
+      }, 1500);
+    } catch (err) {
+      setToast(err.response?.data?.message || 'Could not delete article');
+    }
+  }
+
   const title =
     article && (lang === 'si' ? article.title_si || article.title_en : article.title_en || article.title_si);
   const content =
@@ -189,6 +212,16 @@ export default function AdvisoryDetail() {
                     color="secondary"
                     sx={{ fontFamily: BILINGUAL_FONT }}
                   />
+                  {user?.role === 'admin' && (
+                    <Button
+                      variant="contained"
+                      color="error"
+                      size="small"
+                      onClick={handleDelete}
+                    >
+                      {lang === 'si' ? 'මකන්න' : 'Delete Article'}
+                    </Button>
+                  )}
                 </Box>
 
                 <Typography

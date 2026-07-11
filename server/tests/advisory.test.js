@@ -230,3 +230,67 @@ describe('Bookmarks', () => {
     expect(rows.length).toBe(0);
   });
 });
+
+describe('DELETE /api/advisory/:id', () => {
+  test('as farmer → 403', async () => {
+    const farmer = await makeUser();
+    const off = await officer();
+    const id = await insertArticle({ officer_id: off.id });
+
+    const res = await request(app)
+      .delete(`/api/advisory/${id}`)
+      .set('Authorization', `Bearer ${farmer.token}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  test("as another officer → 403", async () => {
+    const officerA = await officer();
+    const officerB = await officer();
+    const id = await insertArticle({ officer_id: officerA.id });
+
+    const res = await request(app)
+      .delete(`/api/advisory/${id}`)
+      .set('Authorization', `Bearer ${officerB.token}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  test("as officer (own article) → 200 (soft delete/archive)", async () => {
+    const off = await officer();
+    const id = await insertArticle({ officer_id: off.id, status: 'published' });
+
+    const res = await request(app)
+      .delete(`/api/advisory/${id}`)
+      .set('Authorization', `Bearer ${off.token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+
+    const [[article]] = await pool.query(
+      'SELECT status FROM advisory_articles WHERE id = ?',
+      [id]
+    );
+    expect(article.status).toBe('archived');
+  });
+
+  test("as admin → 200 (hard delete)", async () => {
+    const off = await officer();
+    const admin = await makeUser({ role: 'admin' });
+    const id = await insertArticle({ officer_id: off.id, status: 'published' });
+
+    const res = await request(app)
+      .delete(`/api/advisory/${id}`)
+      .set('Authorization', `Bearer ${admin.token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+
+    const [rows] = await pool.query(
+      'SELECT * FROM advisory_articles WHERE id = ?',
+      [id]
+    );
+    expect(rows.length).toBe(0);
+  });
+});
+

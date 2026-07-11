@@ -181,7 +181,7 @@ async function updateArticle(req, res) {
   }
 }
 
-// DELETE /api/advisory/:id  (requireOfficer, own articles only) — soft delete.
+// DELETE /api/advisory/:id  (requireOfficer, own articles or admin) — soft delete for officers, hard delete for admins.
 async function deleteArticle(req, res) {
   const articleId = req.params.id;
 
@@ -194,14 +194,18 @@ async function deleteArticle(req, res) {
     if (!article) {
       return res.status(404).json({ message: 'Article not found' });
     }
-    if (article.officer_id !== req.user.id) {
+    if (req.user.role !== 'admin' && article.officer_id !== req.user.id) {
       return res.status(403).json({ message: 'You can only delete your own articles' });
     }
 
-    await pool.query(
-      "UPDATE advisory_articles SET status = 'archived', updated_at = NOW() WHERE id = ?",
-      [articleId]
-    );
+    if (req.user.role === 'admin') {
+      await pool.query('DELETE FROM advisory_articles WHERE id = ?', [articleId]);
+    } else {
+      await pool.query(
+        "UPDATE advisory_articles SET status = 'archived', updated_at = NOW() WHERE id = ?",
+        [articleId]
+      );
+    }
     return res.json({ success: true });
   } catch (err) {
     console.error('deleteArticle error:', err.message);

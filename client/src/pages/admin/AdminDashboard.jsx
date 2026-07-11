@@ -300,6 +300,24 @@ export default function AdminDashboard() {
     };
   }, [tab, articlesLoaded]);
 
+  async function handleDeleteArticle(id) {
+    if (
+      !window.confirm(
+        'Are you sure you want to permanently delete this article? This action cannot be undone.'
+      )
+    ) {
+      return;
+    }
+    try {
+      await api.delete(`/advisory/${id}`);
+      setSnackbar('Article deleted successfully');
+      setArticles((prev) => prev.filter((a) => a.id !== id));
+      loadStats();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not delete the article.');
+    }
+  }
+
   // ---- Reports (fetch once, on first visit to the tab) ----
   useEffect(() => {
     if (tab !== 2 || reportsLoaded) return undefined;
@@ -676,13 +694,22 @@ export default function AdminDashboard() {
                           </TableCell>
                           <TableCell>{formatDate(a.created_at)}</TableCell>
                           <TableCell align="right">
-                            <Button
-                              size="small"
-                              component={RouterLink}
-                              to={`/advisory/${a.id}`}
-                            >
-                              View
-                            </Button>
+                            <Stack direction="row" spacing={1} justifyContent="flex-end">
+                              <Button
+                                size="small"
+                                component={RouterLink}
+                                to={`/advisory/${a.id}`}
+                              >
+                                View
+                              </Button>
+                              <Button
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeleteArticle(a.id)}
+                              >
+                                Delete
+                              </Button>
+                            </Stack>
                           </TableCell>
                         </TableRow>
                       );
