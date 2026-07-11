@@ -36,8 +36,8 @@ async function createArticle(req, res) {
   }
 
   const cat = VALID_CATEGORIES.includes(category) ? category : 'general';
-  // Default to draft; only publish if explicitly requested.
-  const articleStatus = status === 'published' ? 'published' : 'draft';
+  // Accept any recognised status; default to 'draft' for unrecognised values.
+  const articleStatus = VALID_STATUSES.includes(status) ? status : 'draft';
 
   try {
     const [result] = await pool.query(
@@ -66,6 +66,8 @@ async function createArticle(req, res) {
       message:
         articleStatus === 'published'
           ? 'Article published successfully'
+          : articleStatus === 'archived'
+          ? 'Article saved as archived'
           : 'Article saved as draft',
     });
   } catch (err) {
