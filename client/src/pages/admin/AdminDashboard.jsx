@@ -947,10 +947,7 @@ export default function AdminDashboard() {
                   <Typography variant="caption" color="text.secondary">Email</Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>{certOfficer.email}</Typography>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary">Government Service ID</Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{certOfficer.gov_service_id || '—'}</Typography>
-                </Grid>
+
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary">Designation</Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>{certOfficer.designation || '—'}</Typography>

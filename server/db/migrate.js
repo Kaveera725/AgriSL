@@ -49,13 +49,8 @@ async function migrate() {
     // Officer certification fields (added for the officer verification flow).
     await addColumnIfMissing(
       'users',
-      'gov_service_id',
-      'gov_service_id VARCHAR(100) NULL AFTER district'
-    );
-    await addColumnIfMissing(
-      'users',
       'designation',
-      'designation VARCHAR(150) NULL AFTER gov_service_id'
+      'designation VARCHAR(150) NULL AFTER district'
     );
     await addColumnIfMissing(
       'users',

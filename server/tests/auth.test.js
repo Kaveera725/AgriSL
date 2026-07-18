@@ -28,7 +28,6 @@ function registerOfficer(overrides = {}) {
     .field('password', overrides.password || 'password123')
     .field('district', overrides.district || 'Kandy')
     .field('role', 'officer')
-    .field('gov_service_id', overrides.gov_service_id || 'AGR/2024/001234')
     .field('designation', overrides.designation || 'Field Officer')
     .field('province', overrides.province || 'Central');
   if (!overrides.noDocument) {

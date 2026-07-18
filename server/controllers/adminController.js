@@ -85,7 +85,7 @@ async function getUsers(req, res) {
     // limit/offset are validated integers, safe to interpolate.
     const [users] = await pool.query(
       `SELECT id, name, email, role, district, is_approved, created_at,
-              gov_service_id, designation, province, cert_document_path, rejection_reason,
+              designation, province, cert_document_path, rejection_reason,
               deactivation_reason
        FROM users
        ${whereClause}

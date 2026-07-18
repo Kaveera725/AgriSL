@@ -21,7 +21,7 @@ async function register(req, res) {
   const { name, email, password, district } = req.body;
   let { role } = req.body;
   // Officer-only certification fields (sent as multipart form fields).
-  const { gov_service_id, designation, province } = req.body;
+  const { designation, province } = req.body;
 
   // Validation
   const errors = [];
@@ -38,7 +38,6 @@ async function register(req, res) {
 
   // Officers must supply certification details and an uploaded document.
   if (role === 'officer') {
-    if (!gov_service_id || !gov_service_id.trim()) errors.push('Government service ID is required');
     if (!designation || !designation.trim()) errors.push('Designation is required');
     if (!province || !province.trim()) errors.push('Province is required');
     if (!req.file) errors.push('Certification document is required for officer registration');
@@ -51,7 +50,6 @@ async function register(req, res) {
   // Officers require admin approval; farmers are approved immediately.
   const isApproved = role === 'officer' ? 0 : 1;
   const certPath = role === 'officer' && req.file ? req.file.filename : null;
-  const govServiceId = role === 'officer' ? gov_service_id.trim() : null;
   const officerDesignation = role === 'officer' ? designation.trim() : null;
   const officerProvince = role === 'officer' ? province.trim() : null;
 
@@ -65,8 +63,8 @@ async function register(req, res) {
     const [result] = await pool.query(
       `INSERT INTO users
          (name, email, password_hash, role, district, is_approved,
-          gov_service_id, designation, province, cert_document_path)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          designation, province, cert_document_path)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name.trim(),
         email,
@@ -74,7 +72,6 @@ async function register(req, res) {
         role,
         district.trim(),
         isApproved,
-        govServiceId,
         officerDesignation,
         officerProvince,
         certPath,
@@ -85,7 +82,7 @@ async function register(req, res) {
     if (role === 'officer') {
       const [admins] = await pool.query("SELECT id FROM users WHERE role = 'admin'");
       if (admins.length) {
-        const message = `New agricultural officer registration pending approval: ${name.trim()} (${officerDesignation}) from ${officerProvince} province. Government Service ID: ${govServiceId}`;
+        const message = `New agricultural officer registration pending approval: ${name.trim()} (${officerDesignation}) from ${officerProvince} province.`;
         const values = admins.map((a) => [a.id, 'new_officer_pending', message, result.insertId]);
         await pool.query(
           'INSERT INTO notifications (user_id, type, message, related_id) VALUES ?',

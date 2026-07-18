@@ -16,7 +16,6 @@ CREATE TABLE IF NOT EXISTS users (
   role ENUM('farmer', 'officer', 'admin') NOT NULL DEFAULT 'farmer',
   district VARCHAR(100),
   -- Officer certification details (collected at officer sign-up; NULL for farmers/admins).
-  gov_service_id VARCHAR(100) NULL,        -- government service ID number
   designation VARCHAR(150) NULL,           -- e.g. "Agricultural Instructor", "Field Officer"
   province VARCHAR(100) NULL,              -- province the officer works in
   cert_document_path VARCHAR(255) NULL,    -- uploaded certification file (in uploads/certifications/)

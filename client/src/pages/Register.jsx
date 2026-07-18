@@ -67,7 +67,6 @@ export default function Register() {
     confirmPassword: '',
     district: '',
     role: 'farmer',
-    gov_service_id: '',
     designation: '',
     province: '',
   });
@@ -108,7 +107,7 @@ export default function Register() {
 
   // Validates all fields and surfaces per-field error messages.
   // Password minimum is 8 characters; district is required for geo-targeted advice.
-  // Officers additionally need government service ID, designation, province and a document.
+  // Officers additionally need designation, province and a document.
   function validate() {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Full name is required';
@@ -120,7 +119,6 @@ export default function Register() {
     if (!form.district) errs.district = 'District is required';
 
     if (isOfficer) {
-      if (!form.gov_service_id.trim()) errs.gov_service_id = 'Government service ID is required';
       if (!form.designation) errs.designation = 'Designation is required';
       if (!form.province) errs.province = 'Province is required';
       if (!certDocument) errs.cert = 'Certification document is required';
@@ -147,7 +145,6 @@ export default function Register() {
       formData.append('district', form.district);
       formData.append('role', form.role);
       if (isOfficer) {
-        formData.append('gov_service_id', form.gov_service_id.trim());
         formData.append('designation', form.designation);
         formData.append('province', form.province);
         formData.append('cert_document', certDocument);
@@ -322,17 +319,6 @@ export default function Register() {
                 {/* Officer certification fields */}
                 {isOfficer && (
                   <Box sx={{ mt: 1 }}>
-                    <TextField
-                      label="Government Service ID"
-                      fullWidth
-                      margin="normal"
-                      placeholder="e.g. AGR/2024/001234"
-                      value={form.gov_service_id}
-                      onChange={(e) => setField('gov_service_id', e.target.value)}
-                      error={!!fieldErrors.gov_service_id}
-                      helperText={fieldErrors.gov_service_id}
-                    />
-
                     <FormControl fullWidth margin="normal" error={!!fieldErrors.designation}>
                       <InputLabel id="designation-label">Designation</InputLabel>
                       <Select
