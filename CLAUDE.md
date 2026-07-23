@@ -211,6 +211,7 @@ localStorage.setItem('token', data.token);
 const { data: articles } = await api.get('/articles');
 ```
 
+
 ## Notes for Future Dev
 
 - AI calls use the provider selected by `AI_PROVIDER` (default `gemini`, free). Chat (`/api/chat`) and disease detection (`/api/disease`) both go through `server/utils/openaiClient.js`; only `gemini`/`openai` support vision (disease detection).
