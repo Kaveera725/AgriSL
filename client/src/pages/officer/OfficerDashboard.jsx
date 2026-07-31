@@ -31,7 +31,6 @@ import { Stack } from '../../components/muiSystem';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import ArchiveIcon from '@mui/icons-material/Archive';
-import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import ArticleIcon from '@mui/icons-material/Article';
 import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -133,30 +132,16 @@ export default function OfficerDashboard() {
     };
   }, []);
 
-  // Soft-deletes the article via the DELETE route (sets status to 'archived').
-  // A confirm dialog guards against accidental clicks since this is not easily reversible from the UI.
+  // Soft-deletes the article by setting status back to 'draft' (hidden from
+  // farmers but still editable). A confirm dialog guards against accidental clicks.
   async function archiveArticle(id) {
-    if (!window.confirm('Archive this article? It will no longer be visible to farmers.')) return;
+    if (!window.confirm('Take this article down? It will be saved as a Draft — hidden from farmers, but you can edit and re-publish it any time.')) return;
     setBusyId(id);
     try {
       await api.delete(`/advisory/${id}`);
       await loadArticles();
     } catch {
-      setError('Could not archive the article.');
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  // Restores an archived article back to 'draft' so the officer can edit and republish it.
-  async function unarchiveArticle(id) {
-    if (!window.confirm('Restore this article to Draft? You can then edit and republish it.')) return;
-    setBusyId(id);
-    try {
-      await api.put(`/advisory/${id}`, { status: 'draft' });
-      await loadArticles();
-    } catch {
-      setError('Could not restore the article.');
+      setError('Could not take down the article.');
     } finally {
       setBusyId(null);
     }
@@ -339,21 +324,8 @@ export default function OfficerDashboard() {
                                   <EditIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
-                              {a.status === 'archived' ? (
-                                <Tooltip title="Unarchive (restore to Draft)">
-                                  <span>
-                                    <IconButton
-                                      size="small"
-                                      color="success"
-                                      disabled={busyId === a.id}
-                                      onClick={() => unarchiveArticle(a.id)}
-                                    >
-                                      <UnarchiveIcon fontSize="small" />
-                                    </IconButton>
-                                  </span>
-                                </Tooltip>
-                              ) : (
-                                <Tooltip title="Archive">
+                              {a.status !== 'archived' && (
+                                <Tooltip title="Take Down (save as Draft)">
                                   <span>
                                     <IconButton
                                       size="small"

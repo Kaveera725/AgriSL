@@ -25,19 +25,27 @@ async function notifyFarmers(titleEn, articleId) {
 async function createArticle(req, res) {
   const { title_en, title_si, content_en, content_si, category, tags, status } = req.body;
 
-  // An article is valid if it has a complete title+content pair in at least one
-  // language, so officers can publish English-only, Sinhala-only, or bilingual.
+  const articleStatus = VALID_STATUSES.includes(status) ? status : 'draft';
+
   const hasEn = Boolean(title_en && title_en.trim() && content_en && content_en.trim());
   const hasSi = Boolean(title_si && title_si.trim() && content_si && content_si.trim());
-  if (!hasEn && !hasSi) {
-    return res.status(400).json({
-      message: 'A complete title and content in at least one language (English or Sinhala) are required',
-    });
+  
+  if (articleStatus === 'published') {
+    if (!hasEn && !hasSi) {
+      return res.status(400).json({
+        message: 'A complete title and content in at least one language (English or Sinhala) are required to publish.',
+      });
+    }
+  } else {
+    const hasAnyTitle = Boolean((title_en && title_en.trim()) || (title_si && title_si.trim()));
+    if (!hasAnyTitle) {
+      return res.status(400).json({
+        message: 'A title in at least one language is required to save a draft.',
+      });
+    }
   }
 
   const cat = VALID_CATEGORIES.includes(category) ? category : 'general';
-  // Accept any recognised status; default to 'draft' for unrecognised values.
-  const articleStatus = VALID_STATUSES.includes(status) ? status : 'draft';
 
   try {
     const [result] = await pool.query(
@@ -46,9 +54,9 @@ async function createArticle(req, res) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
-        title_en,
+        title_en || null,
         title_si || null,
-        content_en,
+        content_en || null,
         content_si || null,
         cat,
         tags || null,
@@ -110,12 +118,24 @@ async function updateArticle(req, res) {
     const nextContentSi =
       body.content_si !== undefined ? trimOrNull(body.content_si) : article.content_si;
 
+    const nextStatus = body.status !== undefined ? (VALID_STATUSES.includes(body.status) ? body.status : article.status) : article.status;
+
     const hasEn = Boolean(nextTitleEn && nextContentEn);
     const hasSi = Boolean(nextTitleSi && nextContentSi);
-    if (!hasEn && !hasSi) {
-      return res.status(400).json({
-        message: 'A complete title and content in at least one language (English or Sinhala) are required',
-      });
+
+    if (nextStatus === 'published') {
+      if (!hasEn && !hasSi) {
+        return res.status(400).json({
+          message: 'A complete title and content in at least one language (English or Sinhala) are required to publish.',
+        });
+      }
+    } else {
+      const hasAnyTitle = Boolean(nextTitleEn || nextTitleSi);
+      if (!hasAnyTitle) {
+        return res.status(400).json({
+          message: 'A title in at least one language is required to save a draft.',
+        });
+      }
     }
 
     if (body.title_en !== undefined) {
@@ -203,8 +223,10 @@ async function deleteArticle(req, res) {
     if (req.user.role === 'admin') {
       await pool.query('DELETE FROM advisory_articles WHERE id = ?', [articleId]);
     } else {
+      // Soft-delete for officers: move the article back to 'draft' so it hides
+      // from the public advisory feed but remains editable and re-publishable.
       await pool.query(
-        "UPDATE advisory_articles SET status = 'archived', updated_at = NOW() WHERE id = ?",
+        "UPDATE advisory_articles SET status = 'draft', updated_at = NOW() WHERE id = ?",
         [articleId]
       );
     }
@@ -269,7 +291,8 @@ async function getArticles(req, res) {
   }
 }
 
-// GET /api/advisory/:id  (public) — full article, increments views.
+// GET /api/advisory/:id  (public) — full article for published articles, increments views.
+// Drafts and archived articles are not publicly accessible — they return 404.
 async function getArticle(req, res) {
   const articleId = req.params.id;
 
@@ -280,7 +303,7 @@ async function getArticle(req, res) {
               (SELECT COUNT(*) FROM article_ratings r WHERE r.article_id = a.id) AS total_ratings
        FROM advisory_articles a
        JOIN users u ON u.id = a.officer_id
-       WHERE a.id = ?`,
+       WHERE a.id = ? AND a.status = 'published'`,
       [articleId]
     );
     const article = rows[0];

@@ -49,7 +49,6 @@ export default function ArticleEditor() {
   const STATUSES = [
     { value: 'draft', label: t('articleEditor.statusDraft') },
     { value: 'published', label: t('articleEditor.statusPublished') },
-    { value: 'archived', label: t('articleEditor.statusArchived') },
   ];
 
   const [tab, setTab] = useState(0);
@@ -102,11 +101,19 @@ export default function ArticleEditor() {
     // so an officer can publish English-only, Sinhala-only, or bilingual articles.
     const hasEn = titleEn.trim() && contentEn.trim();
     const hasSi = titleSi.trim() && contentSi.trim();
-    if (!hasEn && !hasSi) {
-      setError(t('articleEditor.errRequired'));
-      // Point the officer at whichever tab they already started filling in.
-      setTab(titleSi.trim() || contentSi.trim() ? 1 : 0);
-      return;
+    const isPublished = targetStatus === 'published';
+    if (isPublished) {
+      if (!hasEn && !hasSi) {
+        setError(t('articleEditor.errRequired'));
+        setTab(titleSi.trim() || contentSi.trim() ? 1 : 0);
+        return;
+      }
+    } else {
+      if (!titleEn.trim() && !titleSi.trim()) {
+        setError(t('articleEditor.errDraftTitleRequired') || 'A title in at least one language is required to save a draft.');
+        setTab(titleSi.trim() ? 1 : 0);
+        return;
+      }
     }
 
     const payload = {
@@ -260,26 +267,21 @@ export default function ArticleEditor() {
             />
 
             <Stack direction="row" spacing={2} sx={{ mt: 4 }}>
+              {/* Single submit button — its label and icon reflect the selected status.
+                  This avoids the old confusion where the "Publish" button always
+                  overrode the status dropdown to 'published'. */}
               <Button
-                variant="outlined"
-                color="primary"
-                startIcon={<SaveIcon />}
+                variant="contained"
+                color={status === 'published' ? 'primary' : 'warning'}
+                startIcon={saving ? <CircularProgress size={18} color="inherit" /> : status === 'published' ? <PublishIcon /> : <SaveIcon />}
                 onClick={() => save(status)}
                 disabled={saving}
               >
-                {saving ? <CircularProgress size={22} /> : t('articleEditor.save')}
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<PublishIcon />}
-                onClick={() => {
-                  setStatus('published');
-                  save('published');
-                }}
-                disabled={saving}
-              >
-                {t('articleEditor.publish')}
+                {saving
+                  ? (status === 'published' ? 'Publishing…' : 'Saving…')
+                  : status === 'published'
+                  ? t('articleEditor.publish')
+                  : t('articleEditor.save') + ' as Draft'}
               </Button>
               <Button component={RouterLink} to="/officer/dashboard" disabled={saving}>
                 {t('articleEditor.cancel')}

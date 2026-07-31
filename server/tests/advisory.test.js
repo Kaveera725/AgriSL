@@ -75,8 +75,8 @@ describe('POST /api/advisory (authoring)', () => {
     const res = await request(app)
       .post('/api/advisory')
       .set('Authorization', `Bearer ${off.token}`)
-      // Sinhala title but no content in either language.
-      .send({ title_si: 'මාතෘකාව පමණි' });
+      // Sinhala title but no content in either language, attempting to publish.
+      .send({ title_si: 'මාතෘකාව පමණි', status: 'published' });
 
     expect(res.status).toBe(400);
   });
@@ -256,7 +256,7 @@ describe('DELETE /api/advisory/:id', () => {
     expect(res.status).toBe(403);
   });
 
-  test("as officer (own article) → 200 (soft delete/archive)", async () => {
+  test("as officer (own article) → 200 (soft delete/save as draft)", async () => {
     const off = await officer();
     const id = await insertArticle({ officer_id: off.id, status: 'published' });
 
@@ -271,7 +271,9 @@ describe('DELETE /api/advisory/:id', () => {
       'SELECT status FROM advisory_articles WHERE id = ?',
       [id]
     );
-    expect(article.status).toBe('archived');
+    // Officer soft-delete moves the article back to 'draft' (hidden from
+    // farmers but still editable and re-publishable by the officer).
+    expect(article.status).toBe('draft');
   });
 
   test("as admin → 200 (hard delete)", async () => {
