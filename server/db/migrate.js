@@ -46,6 +46,25 @@ async function migrate() {
       'identified_species VARCHAR(255) AFTER image_path'
     );
 
+    // Custom ML model output columns (TF.js MobileNetV2 / Python microservice).
+    // Added alongside the two-stage disease detection feature (Stage 1 TF.js +
+    // Stage 2 GPT-4o Vision). All three are nullable so legacy reports are unaffected.
+    await addColumnIfMissing(
+      'disease_reports',
+      'ml_prediction',
+      "`ml_prediction` VARCHAR(200) NULL COMMENT 'Disease class predicted by custom ML model' AFTER treatment_si"
+    );
+    await addColumnIfMissing(
+      'disease_reports',
+      'ml_confidence',
+      "`ml_confidence` DECIMAL(5,2) NULL COMMENT 'ML model confidence score as percentage' AFTER ml_prediction"
+    );
+    await addColumnIfMissing(
+      'disease_reports',
+      'ml_class_index',
+      "`ml_class_index` INT NULL COMMENT 'Numeric class index from ML model output' AFTER ml_confidence"
+    );
+
     // Officer certification fields (added for the officer verification flow).
     await addColumnIfMissing(
       'users',

@@ -10,6 +10,9 @@ const { openaiErrorResponse } = require('../utils/openaiError');
 const { withAIRetry } = require('../utils/aiRetry');
 const { identifyPlant } = require('../utils/plantNetClient');
 const { assessHealth, enabled: cropHealthEnabled } = require('../utils/cropHealthClient');
+// Detector C: optional custom-trained ML microservice (ml/serve.py).
+// Returns null when DISEASE_MODEL_URL is not configured so it is a pure opt-in.
+const { classifyDisease, enabled: diseaseModelEnabled } = require('../utils/diseaseModelClient');
 
 // Build an absolute URL to a stored upload so clients can render the image.
 function imageUrl(req, filename) {
@@ -38,11 +41,23 @@ function toConfidence(probability) {
 // The original pipeline. Grounds the diagnosis on PlantNet's species ID and
 // returns the parsed bilingual JSON. Used as the fallback when crop.health is not
 // configured or its call fails.
+//
+// When the client sends a tf_label (Stage 1 TensorFlow.js MobileNetV2 result),
+// it is injected as a hint into the prompt so GPT-4o Vision can weigh it alongside
+// the visual evidence and produce a more accurate bilingual diagnosis.
 async function detectWithAI(req, plant, crop_type, district) {
   const base64Image = fs.readFileSync(req.file.path, { encoding: 'base64' });
 
   const plantNetHint = plant
     ? `\n      An automated plant-identification system (PlantNet) recognised this plant as ${plant.scientificName || plant.commonName}${plant.commonName ? ` (commonly "${plant.commonName}")` : ''}${plant.organ ? `, photographed organ: ${plant.organ}` : ''}, with a ${plant.scorePct}% match. Take this identification into account. If it clearly conflicts with the farmer-selected crop "${crop_type}", trust the visual evidence and mention the discrepancy in the symptoms.`
+    : '';
+
+  // Stage 1 TF.js hint: the in-browser MobileNetV2 model pre-classified the image
+  // before upload. Pass it to GPT-4o as supporting evidence, not as ground truth.
+  const tfLabel = req.body.tf_label || '';
+  const tfConfidence = req.body.tf_confidence || '';
+  const tfHint = tfLabel
+    ? `\n      An on-device TensorFlow.js MobileNetV2 model (trained on Sri Lankan crop disease data via transfer learning on PlantVillage) pre-classified this image as: "${tfLabel}"${tfConfidence ? ` with ${tfConfidence}% confidence` : ''}. Use this as supporting evidence alongside the visual. If it conflicts with your observation, explain the discrepancy.`
     : '';
 
   const completion = await withAIRetry(
@@ -59,7 +74,7 @@ async function detectWithAI(req, plant, crop_type, district) {
               },
               {
                 type: 'text',
-                text: `You are an expert plant pathologist advising Sri Lankan farmers. Analyze this image of a ${crop_type} plant from ${district} district, Sri Lanka.${plantNetHint}
+                text: `You are an expert plant pathologist advising Sri Lankan farmers. Analyze this image of a ${crop_type} plant from ${district} district, Sri Lanka.${plantNetHint}${tfHint}
       Respond ONLY with valid JSON in this exact format (no markdown, no extra text):
       {
         "disease_name_en": "disease name in English or 'No disease detected'",
@@ -105,7 +120,39 @@ treatment: ${treatment_en}`;
   return parseModelJson(completion.choices[0].message.content);
 }
 
-// --- Detector B: Kindwise crop.health --------------------------------------
+// --- Detector C: custom-trained ML microservice --------------------------
+// Turns the Python FastAPI prediction into the bilingual shape the pipeline expects.
+// Only called when DISEASE_MODEL_URL is set; gracefully ignored otherwise.
+async function buildResultFromModel(pred) {
+  const disease_name_en = pred.isHealthy ? 'No disease detected' : pred.disease;
+  const symptoms_en = pred.isHealthy
+    ? 'No visible signs of disease were detected.'
+    : `The trained model identified "${pred.disease}"${pred.crop ? ` on ${pred.crop}` : ''}.`;
+  const treatment_en = pred.isHealthy
+    ? 'No treatment needed. Continue good agricultural practices.'
+    : 'Consult a local agricultural officer to confirm and obtain a treatment plan.';
+
+  let disease_name_si = pred.isHealthy ? 'රෝගයක් හඳුනාගත නොහැකි විය' : disease_name_en;
+  let symptoms_si = symptoms_en;
+  let treatment_si = treatment_en;
+  try {
+    const si = await translateToSinhala({ disease_name_en, symptoms_en, treatment_en });
+    disease_name_si = si.disease_name_si || disease_name_si;
+    symptoms_si = si.symptoms_si || symptoms_si;
+    treatment_si = si.treatment_si || treatment_si;
+  } catch (err) {
+    console.warn('[disease-model] Sinhala translation failed, using English fallback:', err.message);
+  }
+
+  return {
+    disease_name_en, disease_name_si,
+    confidence: toConfidence(pred.probability),
+    symptoms_en, symptoms_si,
+    treatment_en, treatment_si,
+  };
+}
+
+// --- Detector B: Kindwise crop.health ----------------------------------
 // Turns a crop.health result into the same bilingual shape the rest of the
 // pipeline (DB insert + client) already expects.
 async function buildResultFromCropHealth(health) {
@@ -164,17 +211,44 @@ async function detect(req, res) {
     // unrecognised.
     const plant = await identifyPlant(req.file.path, req.file.mimetype);
 
-    // Disease diagnosis. Prefer crop.health (purpose-built crop-disease ML on
-    // its own quota) when a key is configured, so detection no longer depends on
-    // the AI vision provider that was returning 503s. Fall back to the AI vision
-    // model when crop.health is not configured or returns no usable result.
+    // Disease diagnosis — three-tier detector chain:
+    //   C. Custom-trained ML microservice (fastest when configured; DISEASE_MODEL_URL)
+    //   B. Kindwise crop.health (purpose-built crop-disease ML; CROP_HEALTH_API_KEY)
+    //   A. GPT-4o Vision with Stage 1 TF.js hint (always available; final fallback)
     let result = null;
-    if (cropHealthEnabled()) {
+    // ML column values — populated by whichever detector fires first (or TF.js hint).
+    let mlPrediction = null;   // VARCHAR(200): disease class label
+    let mlConfidence = null;   // DECIMAL(5,2): confidence as 0-100 percentage
+    let mlClassIndex = null;   // INT: numeric class index (Detector C only)
+
+    // Detector C: custom-trained model microservice.
+    if (diseaseModelEnabled()) {
+      const pred = await classifyDisease(req.file.path, req.file.mimetype);
+      if (pred) {
+        result = await buildResultFromModel(pred);
+        mlPrediction = pred.disease || null;
+        mlConfidence = pred.probability != null ? Math.round(pred.probability * 10000) / 100 : null; // → DECIMAL(5,2)
+        mlClassIndex = pred.classIndex != null ? pred.classIndex : null;
+      }
+    }
+
+    // Detector B: crop.health.
+    if (!result && cropHealthEnabled()) {
       const health = await assessHealth(req.file.path, req.file.mimetype);
       if (health) result = await buildResultFromCropHealth(health);
     }
+
+    // Detector A: GPT-4o Vision (Stage 2), enriched with the Stage 1 TF.js hint.
     if (!result) {
       result = await detectWithAI(req, plant, crop_type, district);
+    }
+
+    // If Detector C didn't run, fall back to the Stage 1 TF.js client hint for
+    // the ML columns (tf_label / tf_confidence sent by the browser).
+    if (mlPrediction === null && req.body.tf_label) {
+      mlPrediction = req.body.tf_label;
+      mlConfidence = req.body.tf_confidence ? Number(Number(req.body.tf_confidence).toFixed(2)) : null;
+      // mlClassIndex stays null — the browser hook doesn't expose the raw index.
     }
 
     // Persisted, human-readable PlantNet identification, e.g.
@@ -185,8 +259,10 @@ async function detect(req, res) {
 
     const [insert] = await pool.query(
       `INSERT INTO disease_reports
-       (user_id, crop_type, district, image_path, identified_species, disease_name, confidence_level, symptoms, treatment_en, treatment_si)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (user_id, crop_type, district, image_path, identified_species,
+        disease_name, confidence_level, symptoms, treatment_en, treatment_si,
+        ml_prediction, ml_confidence, ml_class_index)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
         crop_type,
@@ -198,6 +274,9 @@ async function detect(req, res) {
         result.symptoms_en,
         result.treatment_en,
         result.treatment_si,
+        mlPrediction,
+        mlConfidence,
+        mlClassIndex,
       ]
     );
 
@@ -215,6 +294,10 @@ async function detect(req, res) {
       report_id: insert.insertId,
       image_url: imageUrl(req, req.file.filename),
       plantnet: plant, // { commonName, scientificName, organ, scorePct, label } | null
+      // Echo Stage 1 TF.js / ML microservice data back so the client chip renders correctly.
+      ml_label: mlPrediction,
+      ml_confidence: mlConfidence,
+      ml_class_index: mlClassIndex,
       ...result,
     });
   } catch (err) {

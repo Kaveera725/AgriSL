@@ -103,6 +103,28 @@ describe('POST /api/disease', () => {
     expect(res.body.disease_name_en).toBe('Test Disease');
     expect(res.body.confidence).toBe('High');
   });
+  test('with tf_label hint → 200, ml_label echoed in response', async () => {
+    const farmer = await makeUser();
+    const res = await request(app)
+      .post('/api/disease')
+      .set('Authorization', `Bearer ${farmer.token}`)
+      .field('crop_type', 'Rice')
+      .field('district', 'Kandy')
+      // Stage 1 TF.js pre-classification hint fields
+      .field('tf_label', 'Rice blast')
+      .field('tf_confidence', '82')
+      .attach('image', JPEG_BUFFER, {
+        filename: 'leaf.jpg',
+        contentType: 'image/jpeg',
+      });
+    trackUpload(res);
+
+    expect(res.status).toBe(200);
+    expect(res.body.report_id).toBeDefined();
+    // Server should echo Stage 1 hint back so the client chip renders correctly.
+    expect(res.body.ml_label).toBe('Rice blast');
+    expect(res.body.ml_confidence).toBe(82);
+  });
 });
 
 describe('GET /api/disease/history', () => {

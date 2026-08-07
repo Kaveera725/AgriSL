@@ -14,6 +14,12 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- TensorFlow.js + MobileNetV2 for Stage 1 in-browser crop disease pre-classification.
+         Loaded as classic (non-module) scripts so they expose window.tf and window.mobilenet
+         globals that useTFClassifier.js can access without going through the Vite bundler.
+         The model weights (~17 MB) are cached by the browser after the first load. -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

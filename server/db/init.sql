@@ -70,6 +70,11 @@ CREATE TABLE IF NOT EXISTS disease_reports (
   symptoms TEXT,
   treatment_en TEXT,
   treatment_si TEXT,
+  -- Custom ML model output (TensorFlow.js MobileNetV2 / Python microservice).
+  -- Null when the ML model was not used or did not produce a prediction.
+  ml_prediction VARCHAR(200) NULL COMMENT 'Disease class predicted by custom ML model',
+  ml_confidence DECIMAL(5,2) NULL COMMENT 'ML model confidence score as percentage',
+  ml_class_index INT NULL COMMENT 'Numeric class index from ML model output',
   shared_with_officer TINYINT NOT NULL DEFAULT 0,
   officer_id INT NULL,
   status ENUM('pending', 'reviewed') NOT NULL DEFAULT 'pending',

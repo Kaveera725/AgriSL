@@ -1,8 +1,12 @@
-// Crop disease detection page — two-phase flow:
-//   1. Upload form: farmer selects crop type, district, and a plant image (JPG/PNG ≤ 5 MB).
-//   2. Result view: shows disease name (EN + SI), confidence chip, symptoms, and treatment,
-//      with an option to share the saved report with an agricultural officer.
+// Crop disease detection page — two-stage AI diagnosis flow:
+//   Stage 1: TensorFlow.js MobileNetV2 runs in-browser the moment an image is picked,
+//            giving an instant pre-classification chip (crop/disease hint).
+//   Stage 2: The image is uploaded to the server → GPT-4o Vision API returns a detailed
+//            bilingual (English + Sinhala) diagnosis enriched by the Stage 1 TF.js hint.
+//   The result view shows disease name (EN + SI), confidence chip, symptoms, treatment,
+//   and an option to share the saved report with an agricultural officer.
 import { useRef, useState } from 'react';
+import useTFClassifier from '../hooks/useTFClassifier';
 import {
   Alert,
   Box,
@@ -68,6 +72,14 @@ export default function DiseaseDetection() {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Stage 1: TF.js in-browser pre-classification.
+  // imgPreviewRef is attached to the <img> preview element so the hook can
+  // pass it directly to MobileNetV2's classify() call.
+  const imgPreviewRef = useRef(null);
+  const { tfLabel, tfConfidence, tfLoading, tfError } = useTFClassifier(
+    imgPreviewRef.current
+  );
+
   // Step 2 result state
   const [result, setResult] = useState(null);
   const [tab, setTab] = useState(0);
@@ -118,6 +130,9 @@ export default function DiseaseDetection() {
     body.append('crop_type', cropType);
     body.append('district', district);
     body.append('image', imageFile);
+    // Pass Stage 1 TF.js result to the server so GPT-4o Vision can use it as a hint.
+    if (tfLabel) body.append('tf_label', tfLabel);
+    if (tfConfidence != null) body.append('tf_confidence', String(tfConfidence));
 
     setLoading(true);
     try {
@@ -231,6 +246,15 @@ export default function DiseaseDetection() {
                 variant="filled"
                 sx={{ fontWeight: 600 }}
               />
+              {/* Stage 1 TF.js MobileNetV2 pre-classification chip (shown when server echoes it back) */}
+              {result.ml_label && (
+                <Chip
+                  label={`ML pre-diagnosis: ${result.ml_label}${result.ml_confidence != null ? ` · ${result.ml_confidence}%` : ''}`}
+                  color="info"
+                  variant="outlined"
+                  sx={{ fontWeight: 500, maxWidth: '100%', fontFamily: BILINGUAL_FONT }}
+                />
+              )}
               {/* PlantNet species identification (shown only when available) */}
               {result.plantnet && (
                 <Chip
@@ -465,11 +489,32 @@ export default function DiseaseDetection() {
                     component="img"
                     src={imagePreview}
                     alt="Preview"
+                    ref={imgPreviewRef}
+                    crossOrigin="anonymous"
                     sx={{ maxHeight: 180, maxWidth: '100%', borderRadius: 1, mb: 1 }}
                   />
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                     {imageFile.name} — click to change
                   </Typography>
+                  {/* Stage 1: instant TF.js pre-classification chip */}
+                  {tfLoading && (
+                    <Chip
+                      label="ML model analysing…"
+                      size="small"
+                      color="default"
+                      variant="outlined"
+                      sx={{ mt: 1, fontFamily: BILINGUAL_FONT }}
+                    />
+                  )}
+                  {!tfLoading && tfLabel && !tfError && (
+                    <Chip
+                      label={`Stage 1 ML: ${tfLabel}${tfConfidence != null ? ` · ${tfConfidence}%` : ''}`}
+                      size="small"
+                      color={tfConfidence >= 70 ? 'success' : tfConfidence >= 40 ? 'warning' : 'default'}
+                      variant="filled"
+                      sx={{ mt: 1, fontWeight: 600, fontFamily: BILINGUAL_FONT }}
+                    />
+                  )}
                 </Box>
               ) : (
                 <Box>
