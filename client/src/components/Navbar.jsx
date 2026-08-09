@@ -241,7 +241,13 @@ export default function Navbar() {
           <>
             {/* Notification bell */}
             <Tooltip title="Notifications">
-              <IconButton color="inherit" onClick={(e) => setAnchorEl(e.currentTarget)}>
+              <IconButton 
+                color="inherit" 
+                onClick={(e) => {
+                  setAnchorEl(e.currentTarget);
+                  if (unreadCount > 0) handleMarkAll();
+                }}
+              >
                 <Badge badgeContent={unreadCount} color="error">
                   <NotificationsIcon />
                 </Badge>
