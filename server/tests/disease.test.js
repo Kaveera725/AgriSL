@@ -1,5 +1,6 @@
 // Mock the OpenAI SDK so disease detection returns a deterministic JSON result
-// instead of calling the vision model.
+// instead of calling the vision model. The mock JSON matches the new two-stage
+// prompt format: includes ml_agrees and disclaimer fields.
 jest.mock('openai', () => {
   return jest.fn().mockImplementation(() => ({
     chat: {
@@ -9,7 +10,7 @@ jest.mock('openai', () => {
             {
               message: {
                 content:
-                  '{"disease_name_en":"Test Disease","disease_name_si":"පරීක්ෂණ රෝගය","confidence":"High","symptoms_en":"Test symptoms","symptoms_si":"පරීක්ෂණ රෝග ලක්ෂණ","treatment_en":"Test treatment","treatment_si":"පරීක්ෂණ ප්‍රතිකාර"}',
+                  '{"disease_name_en":"Test Disease","disease_name_si":"\u0db4\u0dbb\u0dd3\u0d9a\u0dca\u0dc2\u0dab \u0dbb\u0ddd\u0d9c\u0dba","confidence":"High","ml_agrees":true,"symptoms_en":"Test symptoms","symptoms_si":"\u0db4\u0dbb\u0dd3\u0d9a\u0dca\u0dc2\u0dab \u0dbb\u0ddd\u0d9c \u0dbd\u0d9a\u0dca\u0dc2\u0dab","treatment_en":"Test treatment","treatment_si":"\u0db4\u0dbb\u0dd3\u0d9a\u0dca\u0dc2\u0dab \u0db4\u0dca\u200d\u0dbb\u0dad\u0dd2\u0d9a\u0dcf\u0dbb","disclaimer_en":"This is an AI-assisted diagnosis.","disclaimer_si":"\u0db8\u0dd9\u0dba AI \u0d86\u0daf\u0dc4\u0dcf\u0dbb\u0dd2\u0dad."}',
               },
             },
           ],
@@ -103,14 +104,15 @@ describe('POST /api/disease', () => {
     expect(res.body.disease_name_en).toBe('Test Disease');
     expect(res.body.confidence).toBe('High');
   });
-  test('with tf_label hint → 200, ml_label echoed in response', async () => {
+  test('with tf_label hint → 200, ml_result echoed in response', async () => {
     const farmer = await makeUser();
     const res = await request(app)
       .post('/api/disease')
       .set('Authorization', `Bearer ${farmer.token}`)
       .field('crop_type', 'Rice')
       .field('district', 'Kandy')
-      // Stage 1 TF.js pre-classification hint fields
+      // Stage 1 TF.js pre-classification hint fields.
+      // Server model (diseaseModel.js) is absent in tests, so these become ml_result.
       .field('tf_label', 'Rice blast')
       .field('tf_confidence', '82')
       .attach('image', JPEG_BUFFER, {
@@ -121,9 +123,14 @@ describe('POST /api/disease', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.report_id).toBeDefined();
-    // Server should echo Stage 1 hint back so the client chip renders correctly.
-    expect(res.body.ml_label).toBe('Rice blast');
-    expect(res.body.ml_confidence).toBe(82);
+    // ml_result should carry the tf_label hint when server model is absent.
+    expect(res.body.ml_result).toBeDefined();
+    expect(res.body.ml_result.className).toBe('Rice blast');
+    expect(res.body.ml_result.confidence).toBe(82);
+    // ai_result should contain the bilingual diagnosis.
+    expect(res.body.ai_result).toBeDefined();
+    expect(res.body.ai_result.disease_name_en).toBe('Test Disease');
+    expect(res.body.ai_result.disclaimer_en).toBeDefined();
   });
 });
 

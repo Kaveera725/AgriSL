@@ -1,10 +1,12 @@
 // Crop disease detection page — two-stage AI diagnosis flow:
-//   Stage 1: TensorFlow.js MobileNetV2 runs in-browser the moment an image is picked,
-//            giving an instant pre-classification chip (crop/disease hint).
-//   Stage 2: The image is uploaded to the server → GPT-4o Vision API returns a detailed
-//            bilingual (English + Sinhala) diagnosis enriched by the Stage 1 TF.js hint.
-//   The result view shows disease name (EN + SI), confidence chip, symptoms, treatment,
-//   and an option to share the saved report with an agricultural officer.
+//   Stage 1: Server-side TF.js MobileNetV2 runs on the uploaded image instantly,
+//            giving a classified disease name + confidence %.
+//   Stage 2: GPT-4o Vision API provides a detailed bilingual (EN + SI) diagnosis
+//            enriched by the Stage 1 result, with ml_agrees flag + disclaimer.
+//
+// Result card shows:
+//   Section 1 — ML Model Classification: class name + circular confidence gauge
+//   Section 2 — AI Expert Diagnosis: bilingual tabs, disclaimer, share actions
 import { useRef, useState } from 'react';
 import useTFClassifier from '../hooks/useTFClassifier';
 import {
@@ -21,6 +23,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControl,
   InputLabel,
   MenuItem,
@@ -197,10 +200,23 @@ export default function DiseaseDetection() {
     setShared(false);
   }
 
+  // Shortcuts: the server returns both ml_result and ai_result (new shape).
+  // For backward compat the legacy flat fields are also spread at the top level.
+  const mlRes = result?.ml_result || null;
+  const aiRes = result?.ai_result || result || null;
+
   const diseaseFound =
-    result &&
-    result.disease_name_en &&
-    result.disease_name_en !== 'No disease detected';
+    aiRes &&
+    aiRes.disease_name_en &&
+    aiRes.disease_name_en !== 'No disease detected';
+
+  // ML section confidence colour: green >80, amber 50-80, red <50.
+  function mlColor(conf) {
+    if (conf == null) return 'text.secondary';
+    if (conf >= 80) return 'success.main';
+    if (conf >= 50) return 'warning.main';
+    return 'error.main';
+  }
 
   // ---- Step 2: Result ----
   if (result) {
