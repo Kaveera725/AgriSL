@@ -2,10 +2,11 @@
 //   Chat History   — past chatbot sessions with a link to read the transcript.
 //   Disease Reports — detection results with view-detail and share-with-officer dialogs.
 //   Bookmarks       — saved advisory articles with language toggle and remove action.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Card,
@@ -121,6 +122,8 @@ export default function FarmerDashboard() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState('');
   const [reportLang, setReportLang] = useState(0); // 0 = EN, 1 = SI
+  const fileInputRef = useRef(null);
+  const [uploadingPic, setUploadingPic] = useState(false);
 
   // Share dialog
   const [shareOpen, setShareOpen] = useState(false);
@@ -204,6 +207,28 @@ export default function FarmerDashboard() {
       setEditError(err.response?.data?.message || t('farmerDash.errUpdateProfile'));
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  async function handleProfilePicChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingPic(true);
+    setError('');
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const { data } = await api.post('/auth/profile-picture', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      localStorage.setItem('agrisl_token', data.token);
+      login(data.token);
+      setProfile(data.user);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not update profile picture');
+    } finally {
+      setUploadingPic(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
 
@@ -349,13 +374,44 @@ export default function FarmerDashboard() {
               <CardContent>
                 <Stack
                   direction={{ xs: 'column', sm: 'row' }}
-                  spacing={2}
+                  spacing={3}
                   sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
                 >
-                  <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                      {profile?.name}
-                    </Typography>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ sm: 'center' }}>
+                    <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                      <Avatar 
+                        src={profile?.profile_picture ? `${UPLOADS_BASE}/${profile.profile_picture}` : undefined}
+                        sx={{ width: 80, height: 80, fontSize: 32, bgcolor: 'primary.main' }}
+                      >
+                        {profile?.name ? profile.name.charAt(0).toUpperCase() : '?'}
+                      </Avatar>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingPic}
+                        sx={{
+                          position: 'absolute',
+                          bottom: -4,
+                          right: -4,
+                          bgcolor: 'background.paper',
+                          border: '1px solid #ddd',
+                          '&:hover': { bgcolor: 'grey.100' }
+                        }}
+                      >
+                        {uploadingPic ? <CircularProgress size={16} /> : <EditIcon fontSize="small" />}
+                      </IconButton>
+                      <input 
+                        type="file" 
+                        accept="image/jpeg, image/png"
+                        hidden 
+                        ref={fileInputRef} 
+                        onChange={handleProfilePicChange} 
+                      />
+                    </Box>
+                    <Box>
+                      <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                        {profile?.name}
+                      </Typography>
                     <Stack
                       direction="row"
                       spacing={2}
@@ -382,6 +438,7 @@ export default function FarmerDashboard() {
                       </Stack>
                     </Stack>
                   </Box>
+                </Stack>
                   <Button
                     variant="outlined"
                     color="primary"

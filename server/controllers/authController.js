@@ -14,6 +14,7 @@ function publicUser(u) {
     role: u.role,
     district: u.district,
     is_approved: u.is_approved,
+    profile_picture: u.profile_picture,
   };
 }
 
@@ -98,6 +99,7 @@ async function register(req, res) {
       role,
       district: district.trim(),
       is_approved: isApproved,
+      profile_picture: null,
     };
 
     return res.status(201).json({
@@ -161,6 +163,7 @@ async function login(req, res) {
         name: user.name,
         district: user.district,
         is_approved: user.is_approved,
+        profile_picture: user.profile_picture,
       },
       process.env.JWT_SECRET,
       { expiresIn: TOKEN_EXPIRY }
@@ -211,6 +214,7 @@ async function updateProfile(req, res) {
         name: user.name,
         district: user.district,
         is_approved: user.is_approved,
+        profile_picture: user.profile_picture,
       },
       process.env.JWT_SECRET,
       { expiresIn: TOKEN_EXPIRY }
@@ -223,4 +227,44 @@ async function updateProfile(req, res) {
   }
 }
 
-module.exports = { register, login, getMe, updateProfile };
+async function updateProfilePicture(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No image provided' });
+  }
+
+  try {
+    const filename = req.file.filename;
+    await pool.query('UPDATE users SET profile_picture = ? WHERE id = ?', [
+      filename,
+      req.user.id,
+    ]);
+
+    const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const user = rows[0];
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        district: user.district,
+        is_approved: user.is_approved,
+        profile_picture: user.profile_picture,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRY }
+    );
+
+    return res.json({ token, user: publicUser(user) });
+  } catch (err) {
+    console.error('updateProfilePicture error:', err.message);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+module.exports = { register, login, getMe, updateProfile, updateProfilePicture };

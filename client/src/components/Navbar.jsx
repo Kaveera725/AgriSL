@@ -325,7 +325,10 @@ export default function Navbar() {
 
             {/* User info + logout */}
             <Stack direction="row" spacing={1.5} alignItems="center" sx={{ ml: 2 }}>
-              <Avatar sx={{ bgcolor: 'secondary.main', width: 36, height: 36, fontSize: 15 }}>
+              <Avatar 
+                src={user?.profile_picture ? `http://localhost:5000/uploads/${user.profile_picture}` : undefined}
+                sx={{ bgcolor: 'secondary.main', width: 36, height: 36, fontSize: 15 }}
+              >
                 {initials(user?.name)}
               </Avatar>
               <Typography
