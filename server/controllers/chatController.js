@@ -116,8 +116,9 @@ async function sendMessage(req, res) {
     if (session.user_id !== req.user.id) {
       return res.status(403).json({ message: 'Access denied' });
     }
+    // If the session was completed, reactivate it so it appears active again.
     if (session.status !== 'active') {
-      return res.status(400).json({ message: 'This session has been completed' });
+      await pool.query("UPDATE chat_sessions SET status = 'active' WHERE id = ?", [session_id]);
     }
 
     // Pull prior turns BEFORE inserting the new user message to avoid duplication.
