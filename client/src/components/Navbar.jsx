@@ -35,7 +35,7 @@ const BILINGUAL_FONT = "'Noto Sans Sinhala', Roboto, sans-serif";
 // so link text follows the global English/Sinhala toggle.
 const NAV_LINKS = {
   farmer: [
-    { labelKey: 'nav.home', to: '/' },
+    { labelKey: 'nav.dashboard', to: '/dashboard' },
     { labelKey: 'nav.chatbot', to: '/chatbot' },
     { labelKey: 'nav.disease', to: '/disease' },
     { labelKey: 'nav.advisory', to: '/advisory' },

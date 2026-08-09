@@ -33,6 +33,7 @@ import PlaceIcon from '@mui/icons-material/Place';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import Navbar from '../components/Navbar';
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 
@@ -170,29 +171,18 @@ export default function AdvisoryDetail() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
-      <AppBar position="static" color="primary" elevation={2}>
-        <Toolbar>
-          <AgricultureIcon sx={{ mr: 1 }} />
-          <Typography
-            variant="h6"
-            component={RouterLink}
-            to="/"
-            sx={{ flexGrow: 1, fontWeight: 700, color: 'inherit', textDecoration: 'none' }}
-          >
-            AgriSL
-          </Typography>
-          <Button
-            component={RouterLink}
-            to="/advisory"
-            color="inherit"
-            startIcon={<ArrowBackIcon />}
-          >
-            {lang === 'si' ? 'උපදෙස් වෙත' : 'Back to Advisory'}
-          </Button>
-        </Toolbar>
-      </AppBar>
+      <Navbar />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Button
+          component={RouterLink}
+          to="/advisory"
+          startIcon={<ArrowBackIcon />}
+          sx={{ mb: 2, fontFamily: BILINGUAL_FONT }}
+        >
+          {lang === 'si' ? 'උපදෙස් වෙත ආපසු' : 'Back to Advisory'}
+        </Button>
+        
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress color="primary" />
