@@ -152,6 +152,8 @@ npm run preview      # Preview built bundle locally
 npm run lint         # ESLint
 ```
 
+
+
 ## Key Design Notes
 
 1. **Separate concerns:** Server is API-only; client is a pure SPA (no server-side rendering). They communicate via REST + JSON.
