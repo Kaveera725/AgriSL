@@ -41,17 +41,15 @@ import api from '../api/axios';
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 
 const CROP_OPTIONS = [
+  { value: 'Tomato', label: 'Tomato (තක්කාලි)' },
+  { value: 'Potato', label: 'Potato (අර්තාපල්)' },
+  { value: 'Chilli', label: 'Chilli (මිරිස්)' },
   { value: 'Rice', label: 'Rice (වී)' },
   { value: 'Tea', label: 'Tea (තේ)' },
   { value: 'Coconut', label: 'Coconut (පොල්)' },
   { value: 'Rubber', label: 'Rubber (රබර්)' },
-  { value: 'Vegetables', label: 'Vegetables (එළවළු)' },
-  { value: 'Fruits', label: 'Fruits (පලතුරු)' },
-  { value: 'Spices', label: 'Spices (කුළුබඩු)' },
   { value: 'Maize', label: 'Maize (ඉරිඟු)' },
   { value: 'Onions', label: 'Onions (ළූණු)' },
-  { value: 'Chilli', label: 'Chilli (මිරිස්)' },
-  { value: 'Other', label: 'Other (වෙනත්)' },
 ];
 
 const DISTRICTS = [

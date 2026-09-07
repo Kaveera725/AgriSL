@@ -131,9 +131,19 @@ treatment: ${treatment_en}`;
 }
 
 // --- Detector C: custom-trained ML microservice --------------------------
-// Turns the Python FastAPI prediction into the bilingual shape the pipeline expects.
-// Only called when DISEASE_MODEL_URL is set; gracefully ignored otherwise.
-async function buildResultFromModel(pred) {
+// Passes the Python FastAPI prediction to the vision LLM (detectWithAI) as a hint
+// so the vision model independently assesses and verifies the diagnosis.
+async function buildResultFromModel(req, plant, crop_type, district, pred, mlResult) {
+  try {
+    const verifiedResult = await detectWithAI(req, plant, crop_type, district, mlResult);
+    if (verifiedResult && verifiedResult.disease_name_en) {
+      return verifiedResult;
+    }
+  } catch (err) {
+    console.warn('[disease-model] Vision LLM verification failed, falling back to ML translation:', err.message);
+  }
+
+  // Fallback: only used if vision LLM is completely unavailable
   const disease_name_en = pred.isHealthy ? 'No disease detected' : pred.disease;
   const symptoms_en = pred.isHealthy
     ? 'No visible signs of disease were detected.'
@@ -157,8 +167,11 @@ async function buildResultFromModel(pred) {
   return {
     disease_name_en, disease_name_si,
     confidence: toConfidence(pred.probability),
+    ml_agrees: true,
     symptoms_en, symptoms_si,
     treatment_en, treatment_si,
+    disclaimer_en: 'This is an AI-assisted diagnosis. Please verify with a qualified agricultural officer before treatment.',
+    disclaimer_si: 'මෙය AI ආධාරිත රෝග විනිශ්චයකි. ප්‍රතිකාර කිරීමට පෙර සුදුසුකම් ලත් කෘෂිකර්ම නිලධාරියෙකු සමඟ සත්‍යාපනය කරන්න.',
   };
 }
 
@@ -255,18 +268,30 @@ async function detect(req, res) {
     // -----------------------------------------------------------------------
     let aiResult = null;
 
-    // Detector C: external ML microservice.
+    // Detector C: external ML microservice (PlantVillage model: Tomato, Potato, Bell Pepper/Chilli).
     if (diseaseModelEnabled()) {
       const pred = await classifyDisease(req.file.path, req.file.mimetype);
       if (pred) {
-        aiResult = await buildResultFromModel(pred);
-        // Prefer microservice values if server-side model was absent.
         if (!mlResult) {
           mlPrediction = pred.disease || mlPrediction;
           mlConfidence = pred.probability != null
             ? Math.round(pred.probability * 10000) / 100
             : mlConfidence;
           mlClassIndex = pred.classIndex != null ? pred.classIndex : mlClassIndex;
+          mlResult = {
+            className: mlPrediction,
+            confidence: mlConfidence,
+            classIndex: mlClassIndex,
+            top_3: pred.top_3 || [],
+          };
+        }
+
+        const isModelSupportedCrop = ['tomato', 'potato', 'chilli', 'pepper', 'bell pepper'].some(
+          (c) => crop_type.toLowerCase().includes(c)
+        );
+
+        if (isModelSupportedCrop) {
+          aiResult = await buildResultFromModel(req, plant, crop_type, district, pred, mlResult);
         }
       }
     }
@@ -331,11 +356,15 @@ async function detect(req, res) {
       report_id: insert.insertId,
       image_url: imageUrl(req, req.file.filename),
       plantnet: plant,
+      ml_label: mlPrediction,
+      ml_confidence: mlConfidence,
+      top_3: mlResult?.top_3 || null,
       ml_result: mlResult
         ? {
             className: mlResult.className,
             confidence: mlResult.confidence,
             classIndex: mlResult.classIndex,
+            top_3: mlResult.top_3,
           }
         : mlPrediction
         ? { className: mlPrediction, confidence: mlConfidence, classIndex: mlClassIndex }
