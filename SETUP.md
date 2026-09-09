@@ -1,4 +1,4 @@
-﻿# AgriSL — Complete Developer Setup Guide
+# AgriSL — Complete Developer Setup Guide
 
 This guide walks you through setting up and running the **AgriSL** full-stack platform on a new developer computer from scratch.
 Follow every numbered step in order — do not skip any step.
@@ -42,11 +42,33 @@ cd AgriSL
 
 ## Step 2 — Database Setup
 
-### Step 2.1 — Start MySQL
+### Step 2.1 — Add MySQL to System PATH (Windows — do this once)
 
-Make sure MySQL is running before continuing.
+If `mysql` is not recognized in your terminal, add it to PATH first.
 
-**Windows:**
+1. Press `Win + S` → search **"Environment Variables"** → click **Edit the system environment variables**
+2. Click **Environment Variables** → under **System Variables**, select `Path` → click **Edit**
+3. Click **New** and add:
+   ```
+   C:\Program Files\MySQL\MySQL Server 8.0\bin
+   ```
+4. Click **OK** on all dialogs
+5. **Close and reopen your terminal** (PATH changes only apply to new windows)
+
+Verify MySQL is now found:
+```powershell
+# 📂 Run from: anywhere  |  Shell: PowerShell or CMD
+mysql --version
+```
+Expected output:
+```
+mysql  Ver 8.0.xx Distrib 8.0.xx, for Win64 (x86_64)
+```
+
+---
+
+### Step 2.2 — Start the MySQL Service
+
 ```powershell
 # 📂 Run from: anywhere  |  Shell: PowerShell (as Administrator)
 net start MySQL80
@@ -58,67 +80,160 @@ The MySQL80 service is starting.
 The MySQL80 service was started successfully.
 ```
 
-> If the service name is different, open Windows **Services** (`Win + R` → `services.msc`) and find the MySQL entry.
+> ℹ️ If you get "The service name is invalid", open `services.msc` (`Win + R` → type `services.msc`) and look for any service named **MySQL**. Use that name instead of `MySQL80`.
 
----
-
-### Step 2.2 — Restore the Developer Seed Database
-
-The file `server/db/agrisl_seed.sql` contains the full schema + 3 official demo accounts.
-**No real user data is included — it is safe to share.**
-
-Choose the command that matches your terminal:
-
-**▶ PowerShell (Windows — recommended):**
+Verify MySQL is accepting connections:
 ```powershell
-# 📂 Run from: AgriSL/   |  Shell: PowerShell
-Get-Content "server\db\agrisl_seed.sql" | mysql -u root -p
+# 📂 Run from: anywhere  |  Shell: PowerShell or CMD
+mysql -u root -p --execute="SELECT 'MySQL is running!' AS status;"
 ```
-
-**▶ CMD / Git Bash / macOS / Linux:**
-```bash
-# 📂 Run from: AgriSL/   |  Shell: CMD or Bash
-mysql -u root -p < server/db/agrisl_seed.sql
+Enter your root password when prompted. Expected output:
 ```
-
-**▶ MySQL Workbench (GUI — no terminal needed):**
-1. Open **MySQL Workbench** → connect to your local server
-2. Go to **File → Open SQL Script**
-3. Select `server/db/agrisl_seed.sql`
-4. Click the ⚡ **Execute** button (or press `Ctrl+Shift+Enter`)
-
-After the import, enter your password when prompted. You should see no errors.
++---------------------+
+| status              |
++---------------------+
+| MySQL is running!   |
++---------------------+
+```
 
 ---
 
-### Step 2.3 — Verify the Database
+### Step 2.3 — Create the `agrisl` Database User (Optional but Recommended)
 
-Connect to MySQL and confirm everything was created:
+By default the app connects as `root`. For better practice, create a dedicated user:
 
 ```powershell
 # 📂 Run from: anywhere  |  Shell: PowerShell or CMD
 mysql -u root -p
 ```
 
-Then inside the MySQL prompt, run:
+Inside the MySQL prompt, run these commands one by one:
 
 ```sql
+-- Create the database (safe to run even if it already exists)
+CREATE DATABASE IF NOT EXISTS agrisl
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+-- (Optional) Create a dedicated app user instead of using root
+-- Replace 'yourpassword' with a password of your choice
+CREATE USER IF NOT EXISTS 'agrisl_user'@'localhost' IDENTIFIED BY 'yourpassword';
+GRANT ALL PRIVILEGES ON agrisl.* TO 'agrisl_user'@'localhost';
+FLUSH PRIVILEGES;
+
+-- Confirm the database exists
 SHOW DATABASES;
--- Expected: 'agrisl' appears in the list
 
-USE agrisl;
-
-SHOW TABLES;
--- Expected: 7 tables listed:
---   advisory_articles, article_ratings, bookmarks,
---   chat_messages, chat_sessions, disease_reports,
---   notifications, users
-
-SELECT id, name, email, role FROM users;
--- Expected: exactly 3 rows (admin, farmer, officer)
+-- Exit the MySQL shell
+EXIT;
 ```
 
-Type `exit` to leave the MySQL prompt.
+> ℹ️ If you skip the dedicated user, keep using `root` and set `DB_USER=root` in your `.env`.
+> If you created `agrisl_user`, set `DB_USER=agrisl_user` and `DB_PASS=yourpassword` in `.env`.
+
+---
+
+### Step 2.4 — Import the Developer Seed File
+
+The file `server/db/agrisl_seed.sql` creates all 7 tables and inserts 3 official demo accounts.
+**No real user data — safe to share with any developer.**
+
+Choose the command that matches your terminal:
+
+**▶ PowerShell (Windows — recommended):**
+```powershell
+# 📂 Run from: AgriSL/   |  Shell: PowerShell
+# Using root:
+Get-Content "server\db\agrisl_seed.sql" | mysql -u root -p
+
+# Or using the dedicated user created above:
+Get-Content "server\db\agrisl_seed.sql" | mysql -u agrisl_user -p
+```
+
+**▶ CMD (Windows):**
+```cmd
+REM  📂 Run from: AgriSL/   |  Shell: CMD
+mysql -u root -p < server\db\agrisl_seed.sql
+```
+
+**▶ Git Bash / macOS / Linux:**
+```bash
+# 📂 Run from: AgriSL/   |  Shell: Bash
+mysql -u root -p < server/db/agrisl_seed.sql
+```
+
+**▶ MySQL Workbench (GUI — no terminal needed):**
+1. Open **MySQL Workbench** and connect to `localhost`
+2. Go to **File → Open SQL Script**
+3. Select `server/db/agrisl_seed.sql`
+4. Press `Ctrl + Shift + Enter` (or click the ⚡ **Execute All** button)
+5. Check the **Output** panel — all lines should show green ✅
+
+Enter your password when prompted. You should see **no ERROR lines** in the output.
+
+---
+
+### Step 2.5 — Verify the Database is Ready
+
+Connect to MySQL and run these verification queries:
+
+```powershell
+# 📂 Run from: anywhere  |  Shell: PowerShell or CMD
+mysql -u root -p agrisl
+```
+
+Inside the MySQL prompt:
+
+```sql
+-- 1. Confirm you are in the right database
+SELECT DATABASE();
+-- Expected: agrisl
+
+-- 2. List all tables (should be exactly 8 tables)
+SHOW TABLES;
+-- Expected output:
+-- +-----------------------+
+-- | Tables_in_agrisl      |
+-- +-----------------------+
+-- | advisory_articles     |
+-- | article_ratings       |
+-- | bookmarks             |
+-- | chat_messages         |
+-- | chat_sessions         |
+-- | disease_reports       |
+-- | notifications         |
+-- | users                 |
+-- +-----------------------+
+
+-- 3. Confirm the 3 demo accounts exist
+SELECT id, name, email, role FROM users;
+-- Expected output:
+-- +----+--------------+-------------------+---------+
+-- | id | name         | email             | role    |
+-- +----+--------------+-------------------+---------+
+-- |  1 | Admin        | admin@agrisl.lk   | admin   |
+-- |  2 | Test Farmer  | farmer@agrisl.lk  | farmer  |
+-- |  3 | Test Officer | officer@agrisl.lk | officer |
+-- +----+--------------+-------------------+---------+
+
+-- 4. Exit the MySQL shell
+EXIT;
+```
+
+If all 3 checks pass, your database is fully ready. ✅
+
+---
+
+### Step 2.6 — Test the Database Connection from Node.js
+
+After setting up your `.env` in Step 3.2, you can test the connection with:
+
+```bash
+# 📂 Run from: AgriSL/server/   |  Shell: PowerShell, CMD, or Bash
+node -e "require('./db/db').then ? require('./db/db').query('SELECT 1').then(()=>console.log('DB connected OK')).catch(e=>console.error('DB error:',e.message)) : console.log('Pool created')"
+```
+
+Or simply start the server (Step 3.3) — it will log `Database connected successfully` on startup.
 
 ---
 
