@@ -1,4 +1,4 @@
-# AgriSL — Complete Developer Setup Guide
+﻿# AgriSL — Complete Developer Setup Guide
 
 This guide walks you through setting up and running the **AgriSL** full-stack platform on a new developer computer from scratch.
 Follow every numbered step in order — do not skip any step.
@@ -108,6 +108,7 @@ mysql -u root -p
 ```
 
 Inside the MySQL prompt, run these commands one by one:
+
 
 ```sql
 -- Create the database (safe to run even if it already exists)
