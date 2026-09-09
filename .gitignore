@@ -28,6 +28,7 @@ uploads/
 *.safetensors
 model.json
 class_names.json
+!ml-service/model/class_names.json
 models/
 checkpoints/
 

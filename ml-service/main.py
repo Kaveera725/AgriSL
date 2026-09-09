@@ -1,14 +1,24 @@
+import os
+# Suppress oneDNN and verbose TF logging warnings
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 import json
+from pathlib import Path
 import numpy as np
 import tensorflow as tf
 from fastapi import FastAPI, UploadFile, File
 from PIL import Image
 import io
 
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = BASE_DIR / "model" / "disease_model.keras"
+CLASS_NAMES_PATH = BASE_DIR / "model" / "class_names.json"
+
 app = FastAPI()
 
-model = tf.keras.models.load_model("model/disease_model.keras")
-with open("model/class_names.json") as f:
+model = tf.keras.models.load_model(str(MODEL_PATH))
+with open(CLASS_NAMES_PATH, "r", encoding="utf-8") as f:
     CLASS_NAMES = json.load(f)
 
 IMG_SIZE = (224, 224)
