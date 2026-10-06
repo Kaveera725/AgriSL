@@ -3,8 +3,29 @@ const { client: openai, model: AI_MODEL } = require('../utils/chatClient');
 const { openaiErrorResponse } = require('../utils/openaiError');
 const { withAIRetry } = require('../utils/aiRetry');
 const { getDistrictContext } = require('../utils/districtContext');
+const { getCropContext } = require('../utils/cropContext');
 
 const VALID_LANGUAGES = ['en', 'si'];
+
+// Cleans raw markdown symbols (asterisks, hashtags, backticks) that render as unwanted symbols on the frontend
+function cleanChatFormatting(text) {
+  if (!text) return '';
+  return text
+    // Replace markdown headers (### Header) with a friendly marker
+    .replace(/^#{1,6}\s*(.+)$/gm, '📌 $1')
+    // Remove bold/italic markdown asterisks: **text** -> text, *text* -> text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    // Replace asterisk bullets with clean dot bullets
+    .replace(/^\s*\*\s+/gm, '• ')
+    // Remove markdown horizontal rules (--- or ___)
+    .replace(/^[-_]{3,}\s*$/gm, '')
+    // Remove backticks
+    .replace(/`{1,3}/g, '')
+    // Normalize excessive consecutive blank lines
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 // Build the system prompt that locks the model to the right language and context.
 function buildSystemPrompt(crop_type, district, language) {
@@ -18,48 +39,67 @@ function buildSystemPrompt(crop_type, district, language) {
 
   const languageGuidance =
     language === 'si'
-      ? `Respond primarily in ${primaryLanguage} using fluent, natural Sri Lankan Sinhala with correct grammar, spelling, and proper Unicode. Avoid stiff literal translations; write the way people actually speak. When a technical term is commonly used in English (e.g. fertilizer brand names, "pH", "fungicide"), it is fine to keep it in English rather than forcing an awkward Sinhala translation. If the farmer mixes Sinhala and English, you may reply naturally in both.`
+      ? `Respond primarily in ${primaryLanguage} using fluent, natural Sri Lankan Sinhala with correct grammar, spelling, and proper Unicode. Write the way agricultural officers and farmers speak in Sri Lanka. When a technical term is commonly used in English (e.g. fertilizer brand names like MOP/TSP, "pH", specific chemical or fungicide names), it is fine to keep it in English alongside Sinhala. If the farmer asks in a mix of Sinhala and English (Singlish or bilingual), reply naturally and clearly.`
       : `Respond primarily in ${primaryLanguage}. If the farmer writes in Sinhala or mixes languages, you may reply naturally in the same mix.`;
 
   const styleGuidance = `
-Communicate like a modern AI assistant such as ChatGPT: natural, professional, friendly, and easy to read.
+You are AgriSL, an empathetic, highly knowledgeable agricultural advisor specifically dedicated to Sri Lankan farming communities.
 
-Answer directly first, then explain only when it adds value. Avoid robotic phrasing and repetitive openings. Be accurate and factual, ask a clarifying question when the request is unclear, never invent information, and say so plainly when you are unsure.
+Sri Lankan Agricultural Accuracy & Guidelines:
+- Ground every piece of advice in official Sri Lankan agricultural practices from the Department of Agriculture (DOA), Coconut Research Institute (CRI), Tea Research Institute (TRI), Rubber Research Institute (RRISL), or Export Agriculture Department (DEA).
+- Ground advice in the specific agro-ecological conditions of ${district} district (rainfall pattern, Maha/Yala seasons, soil types, irrigation sources).
+- Recommend official Sri Lankan crop varieties (e.g. Bg/At varieties for paddy, MI varieties for chilli/maize, Vedalan for red onions, TRI clones for tea, CRIC for coconut, RRIC for rubber).
+- Provide practical, locally accessible fertilizer recommendations (basal compost/cattle manure, Urea splits, TSP, MOP, Dolomite) and safe Integrated Pest Management (IPM).
 
-Keep formatting minimal and let clean paragraphs carry the answer:
-- Before replying, decide whether any Markdown is actually needed. If plain text reads well, use plain text.
-- Prefer short, readable paragraphs with spacing between them. Avoid large walls of text. Keep replies mobile-friendly.
-- Use a bullet or numbered list only for genuine steps, comparisons, features, or recommendations, never to break up ordinary sentences.
-- Avoid bold. Use **bold** only for a rare critical warning, key term, or short section title, never for whole paragraphs or many words per sentence.
-- Avoid headings (#, ##, ###). Add a short heading only when a long answer truly needs sections.
-- Keep any code blocks unchanged and explain them in simple language. Use a table only when it genuinely improves understanding.
+Formatting Rules (STRICT - Prevent Unwanted Symbols):
+- NEVER use asterisks for bolding (DO NOT write **word** or *word*). The user interface displays plain text, so markdown asterisks appear as ugly, broken symbols.
+- NEVER use markdown hashtag headers (DO NOT write ### or ## or #).
+- NEVER use asterisk bullets (DO NOT write * item). For lists, use neat bullet dots (•) or numbers (1., 2., 3.).
+- NEVER use markdown horizontal rule lines (DO NOT write --- or ___).
+- NEVER use markdown backticks or code blocks.
 
-Priorities, in order: accuracy and usefulness, natural Sinhala/English communication, readability, minimal but effective formatting, and a professional user experience. Do not over-format.`;
+Tone & User-Friendly Emojis:
+- Naturally use friendly, helpful agricultural and status emojis (e.g. 🌱, 🌾, 🚜, 💧, ☀️, 🍃, 🐛, 💡, 🩺, 🛡️, 🌧️, 📌) throughout your responses. This makes the chat welcoming, intuitive, and visually pleasant for farmers.
+- Structure your response with clean line breaks and short, easy-to-read paragraphs suitable for mobile screens.`;
 
   const ctx = getDistrictContext(district);
   const districtSection = ctx
     ? `
-## ${district} District — Local Agricultural Context
-- Zone: ${ctx.zone}
-- Annual rainfall: ${ctx.rainfall}
+District Agro-Ecological Profile for ${district}:
+- Climatic Zone: ${ctx.zone}
+- Annual Rainfall: ${ctx.rainfall}
 - Elevation: ${ctx.elevation}
-- Soils: ${ctx.soils}
-- Main crops grown here: ${ctx.mainCrops.join(', ')}
-- Growing seasons: ${ctx.seasons}
-- Key local challenges: ${ctx.challenges}
-- Irrigation: ${ctx.irrigation}
-- Notes: ${ctx.notes}
+- Soil Types: ${ctx.soils}
+- Main Local Crops: ${ctx.mainCrops.join(', ')}
+- Cultivation Seasons: ${ctx.seasons}
+- Key Local Agricultural Challenges: ${ctx.challenges}
+- Irrigation Sources: ${ctx.irrigation}
+- Local District Notes: ${ctx.notes}
 
-Use this district data to give precise, locally relevant advice. Do not give generic Sri Lanka advice when district-specific guidance is possible. Tailor fertiliser schedules, pest warnings, irrigation advice, and variety recommendations to ${district}'s actual climate, soils, and seasons.`
+Tailor all answers to ${district}'s specific climate, monsoon timing, soil characteristics, and water resources.`
     : '';
+
+  const cropCtx = getCropContext(crop_type);
+  const cropSection = cropCtx
+    ? `
+Crop / Plant Profile for ${crop_type} (${cropCtx.sinhalaName}):
+- Responsible Research Institutes: ${cropCtx.institutes}
+- Recommended Sri Lankan Varieties: ${JSON.stringify(cropCtx.recommendedVarieties)}
+- Cultivation Seasons: ${cropCtx.seasons}
+- Department of Agriculture Fertilizer Regimen: ${cropCtx.fertilizerDOA}
+- Water & Irrigation Management: ${cropCtx.waterManagement}
+- Pests & Disease Management (IPM): ${cropCtx.keyPestsAndDiseases}`
+    : `Crop / Plant: ${crop_type} (Provide Sri Lanka Department of Agriculture standard advice for ${crop_type})`;
 
   return `You are AgriSL, an expert agricultural advisor for Sri Lanka. The farmer is asking about ${crop_type} cultivation in ${district} district.
 ${districtSection}
+${cropSection}
 
 ${languageGuidance}
 ${styleGuidance}
 
-End EVERY response with this disclaimer in the same language as your reply: ${disclaimer}`;
+End EVERY response with this disclaimer in the same language as your reply:
+${disclaimer}`;
 }
 
 // POST /api/chat/start
@@ -151,7 +191,8 @@ async function sendMessage(req, res) {
       { label: 'chat' }
     );
 
-    const assistantReply = completion.choices[0].message.content;
+    const rawAssistantReply = completion.choices[0].message.content;
+    const assistantReply = cleanChatFormatting(rawAssistantReply);
 
     // Persist the assistant reply.
     await pool.query(

@@ -12,8 +12,22 @@ function formatTime(ts) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+// Strips unwanted markdown symbols like **, ###, --- that look broken in chat
+function formatMessageContent(text) {
+  if (!text) return '';
+  return text
+    .replace(/^#{1,6}\s*(.+)$/gm, '📌 $1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .replace(/^\s*\*\s+/gm, '• ')
+    .replace(/^[-_]{3,}\s*$/gm, '')
+    .replace(/`{1,3}/g, '')
+    .trim();
+}
+
 export default function ChatMessage({ role, content, created_at }) {
   const isUser = role === 'user';
+  const displayContent = isUser ? content : formatMessageContent(content);
 
   return (
     <Box
@@ -40,7 +54,7 @@ export default function ChatMessage({ role, content, created_at }) {
             variant="body1"
             sx={{ fontFamily: BILINGUAL_FONT, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
           >
-            {content}
+            {displayContent}
           </Typography>
         </Paper>
         {created_at && (

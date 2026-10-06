@@ -10,7 +10,7 @@ if (!process.env.GROQ_API_KEY) {
   );
 }
 
-const useGroq = !!process.env.GROQ_API_KEY;
+const useGroq = process.env.AI_PROVIDER !== 'openai' && !!process.env.GROQ_API_KEY;
 
 const client = useGroq
   ? new OpenAI({
