@@ -5,6 +5,7 @@ const {
   startSession,
   sendMessage,
   completeSession,
+  continueSession,
   getHistory,
   getSession,
 } = require('../controllers/chatController');
@@ -13,6 +14,7 @@ const {
 router.post('/start', requireAuth, startSession);
 router.post('/message', requireAuth, sendMessage);
 router.post('/complete', requireAuth, completeSession);
+router.post('/continue', requireAuth, continueSession);
 router.get('/history', requireAuth, getHistory);
 router.get('/session/:id', requireAuth, getSession);
 

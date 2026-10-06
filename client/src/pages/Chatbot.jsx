@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Container,
   FormControl, InputLabel, MenuItem, Paper, Select, Stack, TextField,
@@ -9,6 +10,7 @@ import SendIcon from '@mui/icons-material/Send';
 import ChatIcon from '@mui/icons-material/Chat';
 import AddIcon from '@mui/icons-material/Add';
 import MenuIcon from '@mui/icons-material/Menu';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import api from '../api/axios';
 import ChatMessage from '../components/ChatMessage';
 import Navbar from '../components/Navbar';
@@ -59,9 +61,19 @@ export default function Chatbot() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const scrollRef = useRef(null);
 
+  const [searchParams] = useSearchParams();
+  const urlSessionId = searchParams.get('session');
+
   useEffect(() => {
     fetchHistory();
   }, []);
+
+  // Open session from URL parameter if present (e.g. /chatbot?session=12)
+  useEffect(() => {
+    if (urlSessionId) {
+      loadSession(Number(urlSessionId));
+    }
+  }, [urlSessionId]);
 
   // Auto-scroll to the newest message.
   useEffect(() => {
@@ -140,11 +152,25 @@ export default function Chatbot() {
     try {
       await api.post('/chat/complete', { session_id: session.session_id || session.id });
       setCompleted(true);
+      setSession((s) => ({ ...s, status: 'completed' }));
       fetchHistory();
     } catch (err) {
       setError(err.response?.data?.message || 'Could not complete the session');
     } finally {
       setCompleting(false);
+    }
+  }
+
+  async function handleContinueChat() {
+    const sId = session?.session_id || session?.id;
+    if (!sId) return;
+    try {
+      const { data } = await api.post('/chat/continue', { session_id: sId });
+      setCompleted(false);
+      setSession((s) => ({ ...s, status: 'active', ...data.session }));
+      fetchHistory();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not continue the chat session');
     }
   }
 
@@ -221,7 +247,7 @@ export default function Chatbot() {
                     </ListItemIcon>
                     <ListItemText
                       primary={`${h.crop_type} - ${h.district}`}
-                      secondary={new Date(h.created_at).toLocaleDateString()}
+                      secondary={`${new Date(h.created_at).toLocaleDateString()} • ${h.is_expired ? 'Expired' : h.status === 'completed' ? `${h.days_remaining ?? 30}d left` : 'Active'}`}
                       primaryTypographyProps={{ 
                         variant: 'body2', 
                         fontWeight: isActive ? 600 : 400,
@@ -368,6 +394,23 @@ export default function Chatbot() {
                         sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', fontFamily: BILINGUAL_FONT }}
                       />
                     )}
+                    {session?.days_remaining !== undefined && (
+                      <Chip
+                        size="small"
+                        label={
+                          session.is_expired
+                            ? (session.language === 'si' ? 'කල් ඉකුත් විය' : 'Expired (>30d)')
+                            : session.language === 'si'
+                            ? `තව දින ${session.days_remaining}ක් ඇත`
+                            : `${session.days_remaining}d left to continue`
+                        }
+                        sx={{
+                          bgcolor: session.is_expired ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.25)',
+                          color: '#fff',
+                          fontFamily: BILINGUAL_FONT,
+                        }}
+                      />
+                    )}
                   </Box>
 
                   {/* Messages */}
@@ -408,13 +451,41 @@ export default function Chatbot() {
                     </Alert>
                   )}
 
-                  {completed && (
-                    <Alert severity="success" sx={{ borderRadius: 0, mb: 1, mx: 2, fontFamily: BILINGUAL_FONT }}>
+                  {session?.is_expired ? (
+                    <Alert severity="warning" sx={{ borderRadius: 0, mb: 1, mx: 2, fontFamily: BILINGUAL_FONT }}>
                       {session?.language === 'si'
-                        ? 'සැසිය සම්පූර්ණයි. (පණිවිඩයක් යැවීමෙන් චැට් එක අලුත් වේ)'
-                        : 'Session marked as complete. (Sending a message will resume it)'}
+                        ? 'මෙම චැට් සැසිය දින 30ක් ඉක්මවා ඇති බැවින් කල් ඉකුත් වී ඇත. එය කියවීමට පමණි. කරුණාකර නව චැට් එකක් අරඹන්න.'
+                        : 'This chat session has expired after 30 days and is read-only. Please start a new chat.'}
                     </Alert>
-                  )}
+                  ) : completed ? (
+                    <Alert
+                      severity="info"
+                      sx={{
+                        borderRadius: 0,
+                        mb: 1,
+                        mx: 2,
+                        fontFamily: BILINGUAL_FONT,
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                      action={
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="primary"
+                          startIcon={<PlayArrowIcon />}
+                          onClick={handleContinueChat}
+                          sx={{ fontFamily: BILINGUAL_FONT, ml: 2, fontWeight: 700 }}
+                        >
+                          {session?.language === 'si' ? 'චැට් එක ඉදිරියට ගෙන යන්න' : 'Continue Chat Session'}
+                        </Button>
+                      }
+                    >
+                      {session?.language === 'si'
+                        ? `සැසිය සුරකින ලදි. දින 30ක් ඇතුළත (තව දින ${session?.days_remaining ?? 30}ක්) ඕනෑම වේලාවක මෙම චැට් එක නැවත ඉදිරියට ගෙන යා හැක.`
+                        : `Session saved. You can continue this chat anytime within 30 days (${session?.days_remaining ?? 30} days remaining).`}
+                    </Alert>
+                  ) : null}
 
                   <Paper component="form" onSubmit={handleSend} elevation={0} sx={{ p: 1.5, borderTop: '1px solid #eee' }}>
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-end' }}>
@@ -422,20 +493,26 @@ export default function Chatbot() {
                         fullWidth
                         multiline
                         maxRows={4}
-                        placeholder={session?.language === 'si' ? 'ඔබගේ ප්‍රශ්නය මෙහි ටයිප් කරන්න...' : 'Type your question...'}
+                        placeholder={
+                          session?.is_expired
+                            ? (session?.language === 'si' ? 'සැසිය කල් ඉකුත් වී ඇත...' : 'This session has expired...')
+                            : session?.language === 'si'
+                            ? 'ඔබගේ ප්‍රශ්නය මෙහි ටයිප් කරන්න...'
+                            : 'Type your question...'
+                        }
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) handleSend(e);
                         }}
-                        disabled={sending}
+                        disabled={sending || session?.is_expired}
                         slotProps={{ input: { sx: { fontFamily: BILINGUAL_FONT } } }}
                       />
                       <Button
                         type="submit"
                         variant="contained"
                         color="primary"
-                        disabled={sending || !input.trim()}
+                        disabled={sending || !input.trim() || session?.is_expired}
                         sx={{ minWidth: 56, height: 56 }}
                       >
                         <SendIcon />
@@ -447,7 +524,7 @@ export default function Chatbot() {
                         color="secondary"
                         size="small"
                         onClick={handleComplete}
-                        disabled={completing || completed}
+                        disabled={completing || completed || session?.is_expired}
                         sx={{ fontFamily: BILINGUAL_FONT }}
                       >
                         {completing ? (

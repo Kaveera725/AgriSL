@@ -46,6 +46,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import PlaceIcon from '@mui/icons-material/Place';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ShareIcon from '@mui/icons-material/Share';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import api from '../../api/axios';
@@ -568,6 +569,19 @@ export default function FarmerDashboard() {
                               })}
                               sx={{ fontFamily: BILINGUAL_FONT }}
                             />
+                            {s.days_remaining !== undefined && (
+                              <Chip
+                                size="small"
+                                variant="outlined"
+                                color={s.is_expired ? 'default' : 'warning'}
+                                label={
+                                  s.is_expired
+                                    ? t('farmerDash.sessionExpired') || 'Expired'
+                                    : fmt(t('farmerDash.daysRemaining') || '{n}d left', { n: s.days_remaining })
+                                }
+                                sx={{ fontFamily: BILINGUAL_FONT }}
+                              />
+                            )}
                           </Stack>
                           <Stack
                             direction="row"
@@ -578,14 +592,29 @@ export default function FarmerDashboard() {
                             <Typography variant="caption" color="text.secondary">
                               {formatDate(s.created_at)}
                             </Typography>
-                            <Button
-                              size="small"
-                              startIcon={<VisibilityIcon />}
-                              onClick={() => navigate(`/chatbot/session/${s.id}`)}
-                              sx={{ fontFamily: BILINGUAL_FONT }}
-                            >
-                              {t('farmerDash.view')}
-                            </Button>
+                            <Stack direction="row" spacing={1}>
+                              {s.can_continue !== false && (
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="primary"
+                                  startIcon={<PlayArrowIcon fontSize="small" />}
+                                  onClick={() => navigate(`/chatbot?session=${s.id}`)}
+                                  sx={{ fontFamily: BILINGUAL_FONT, fontSize: '0.78rem', py: 0.25 }}
+                                >
+                                  {t('farmerDash.continueChat') || 'Continue'}
+                                </Button>
+                              )}
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<VisibilityIcon />}
+                                onClick={() => navigate(`/chatbot/session/${s.id}`)}
+                                sx={{ fontFamily: BILINGUAL_FONT, fontSize: '0.78rem', py: 0.25 }}
+                              >
+                                {t('farmerDash.view')}
+                              </Button>
+                            </Stack>
                           </Stack>
                         </CardContent>
                       </Card>
