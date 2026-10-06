@@ -27,6 +27,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import Navbar from '../components/Navbar';
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 
@@ -102,36 +103,7 @@ export default function AdvisoryBrowse() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
-      {/* Top bar */}
-      <AppBar position="static" color="primary" elevation={2}>
-        <Toolbar>
-          <AgricultureIcon sx={{ mr: 1 }} />
-          <Typography
-            variant="h6"
-            component={RouterLink}
-            to="/"
-            sx={{ flexGrow: 1, fontWeight: 700, color: 'inherit', textDecoration: 'none' }}
-          >
-            AgriSL
-          </Typography>
-          {isAuthenticated ? (
-            <>
-              {user.role === 'officer' || user.role === 'admin' ? (
-                <Button component={RouterLink} to="/officer/dashboard" color="inherit" sx={{ mr: 1 }}>
-                  My Articles
-                </Button>
-              ) : null}
-              <Button color="inherit" variant="outlined" onClick={logout}>
-                Logout
-              </Button>
-            </>
-          ) : (
-            <Button component={RouterLink} to="/login" color="inherit" variant="outlined">
-              Sign In
-            </Button>
-          )}
-        </Toolbar>
-      </AppBar>
+      <Navbar />
 
       {/* Hero */}
       <Box sx={{ bgcolor: 'primary.main', color: '#fff', py: { xs: 5, md: 7 }, px: 2, textAlign: 'center' }}>

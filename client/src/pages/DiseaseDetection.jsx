@@ -37,6 +37,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LocalFloristIcon from '@mui/icons-material/LocalFlorist';
 import api from '../api/axios';
+import Navbar from '../components/Navbar';
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 
@@ -219,7 +220,9 @@ export default function DiseaseDetection() {
   // ---- Step 2: Result ----
   if (result) {
     return (
-      <Container maxWidth="sm" sx={{ py: 6 }}>
+      <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
+        <Navbar />
+        <Container maxWidth="sm" sx={{ py: 6 }}>
         <Card elevation={3}>
           {/* Uploaded image */}
           {result.image_url && (
@@ -419,12 +422,15 @@ export default function DiseaseDetection() {
           </DialogActions>
         </Dialog>
       </Container>
-    );
-  }
+    </Box>
+  );
+}
 
   // ---- Step 1: Form ----
   return (
-    <Container maxWidth="sm" sx={{ py: 6 }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
+      <Navbar />
+      <Container maxWidth="sm" sx={{ py: 6 }}>
       <Card elevation={3}>
         <CardContent sx={{ p: 4 }}>
           <Typography
@@ -567,5 +573,6 @@ export default function DiseaseDetection() {
         </CardContent>
       </Card>
     </Container>
+    </Box>
   );
 }

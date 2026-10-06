@@ -96,6 +96,11 @@ async function migrate() {
       'is_active',
       'is_active TINYINT NOT NULL DEFAULT 1 AFTER is_approved'
     );
+    await addColumnIfMissing(
+      'users',
+      'profile_picture',
+      'profile_picture VARCHAR(255) NULL AFTER is_active'
+    );
 
     // Seed users (idempotent — skip if the email already exists).
     const users = [

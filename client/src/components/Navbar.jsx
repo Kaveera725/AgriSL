@@ -35,7 +35,7 @@ const BILINGUAL_FONT = "'Noto Sans Sinhala', Roboto, sans-serif";
 // so link text follows the global English/Sinhala toggle.
 const NAV_LINKS = {
   farmer: [
-    { labelKey: 'nav.home', to: '/' },
+    { labelKey: 'nav.dashboard', to: '/dashboard' },
     { labelKey: 'nav.chatbot', to: '/chatbot' },
     { labelKey: 'nav.disease', to: '/disease' },
     { labelKey: 'nav.advisory', to: '/advisory' },
@@ -241,7 +241,13 @@ export default function Navbar() {
           <>
             {/* Notification bell */}
             <Tooltip title="Notifications">
-              <IconButton color="inherit" onClick={(e) => setAnchorEl(e.currentTarget)}>
+              <IconButton 
+                color="inherit" 
+                onClick={(e) => {
+                  setAnchorEl(e.currentTarget);
+                  if (unreadCount > 0) handleMarkAll();
+                }}
+              >
                 <Badge badgeContent={unreadCount} color="error">
                   <NotificationsIcon />
                 </Badge>
@@ -319,7 +325,10 @@ export default function Navbar() {
 
             {/* User info + logout */}
             <Stack direction="row" spacing={1.5} alignItems="center" sx={{ ml: 2 }}>
-              <Avatar sx={{ bgcolor: 'secondary.main', width: 36, height: 36, fontSize: 15 }}>
+              <Avatar 
+                src={user?.profile_picture ? `http://localhost:5000/uploads/${user.profile_picture}` : undefined}
+                sx={{ bgcolor: 'secondary.main', width: 36, height: 36, fontSize: 15 }}
+              >
                 {initials(user?.name)}
               </Avatar>
               <Typography

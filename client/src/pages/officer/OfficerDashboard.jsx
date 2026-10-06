@@ -1,10 +1,11 @@
 // Officer dashboard — shows article statistics, an editable article table with
 // archive/edit actions, and a list of disease reports shared by farmers that are
 // awaiting the officer's review.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Card,
@@ -37,6 +38,8 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
+
+const UPLOADS_BASE = 'http://localhost:5000/uploads';
 
 const CATEGORY_LABEL = {
   crop_management: 'Crop Management',
@@ -88,13 +91,16 @@ function StatCard({ icon, label, value, color = 'primary.main' }) {
 
 export default function OfficerDashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, login } = useAuth();
 
   const [articles, setArticles] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
+
+  const fileInputRef = useRef(null);
+  const [uploadingPic, setUploadingPic] = useState(false);
 
   // Refreshes the articles list after a mutation (archive). Called separately
   // from the initial load so the mutation path does not need to re-fetch reports.
@@ -161,6 +167,27 @@ export default function OfficerDashboard() {
     }
   }
 
+  async function handleProfilePicChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingPic(true);
+    setError('');
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const { data } = await api.post('/auth/profile-picture', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      localStorage.setItem('agrisl_token', data.token);
+      login(data.token);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not update profile picture');
+    } finally {
+      setUploadingPic(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
   // Stats
   const total = articles.length;
   const published = articles.filter((a) => a.status === 'published').length;
@@ -179,16 +206,48 @@ export default function OfficerDashboard() {
             mb: 1,
           }}
         >
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
-              Officer Dashboard
-            </Typography>
-            {user?.name && (
-              <Typography variant="body2" color="text.secondary">
-                Welcome, {user.name}
+          <Stack direction="row" spacing={3} alignItems="center">
+            <Box sx={{ position: 'relative', display: 'inline-block' }}>
+              <Avatar 
+                src={user?.profile_picture ? `${UPLOADS_BASE}/${user.profile_picture}` : undefined}
+                sx={{ width: 80, height: 80, fontSize: 32, bgcolor: 'primary.main' }}
+              >
+                {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
+              </Avatar>
+              <IconButton 
+                size="small" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPic}
+                sx={{
+                  position: 'absolute',
+                  bottom: -4,
+                  right: -4,
+                  bgcolor: 'background.paper',
+                  border: '1px solid #ddd',
+                  '&:hover': { bgcolor: 'grey.100' }
+                }}
+              >
+                {uploadingPic ? <CircularProgress size={16} /> : <EditIcon fontSize="small" />}
+              </IconButton>
+              <input 
+                type="file" 
+                accept="image/jpeg, image/png"
+                hidden 
+                ref={fileInputRef} 
+                onChange={handleProfilePicChange} 
+              />
+            </Box>
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                Officer Dashboard
               </Typography>
-            )}
-          </Box>
+              {user?.name && (
+                <Typography variant="body2" color="text.secondary">
+                  Welcome, {user.name}
+                </Typography>
+              )}
+            </Box>
+          </Stack>
           <Stack direction="row" spacing={2} alignItems="center">
             <Chip
               icon={<EditIcon />}

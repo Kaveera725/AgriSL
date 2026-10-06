@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
   cert_document_path VARCHAR(255) NULL,    -- uploaded certification file (in uploads/certifications/)
   rejection_reason TEXT NULL,             -- admin-supplied reason when an officer is rejected
   deactivation_reason TEXT NULL,          -- admin-supplied reason when an account is deactivated
+  profile_picture VARCHAR(255) NULL,      -- User profile picture path
   -- Officer approval state (TINYINT used as a tri-state):
   --   0 = pending  (default for officers; signup logic sets this)
   --   1 = approved (default for farmers; admin-set for officers)

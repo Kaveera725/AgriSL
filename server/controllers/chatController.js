@@ -134,6 +134,20 @@ async function startSession(req, res) {
   }
 }
 
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function getSessionRetentionInfo(session) {
+  const createdAtTime = new Date(session.created_at).getTime();
+  const ageMs = Date.now() - createdAtTime;
+  const isExpired = ageMs > SESSION_MAX_AGE_MS;
+  const daysRemaining = Math.max(0, Math.ceil((SESSION_MAX_AGE_MS - ageMs) / (24 * 60 * 60 * 1000)));
+  return {
+    is_expired: isExpired,
+    can_continue: !isExpired,
+    days_remaining: daysRemaining,
+  };
+}
+
 // POST /api/chat/message
 async function sendMessage(req, res) {
   const { session_id, message } = req.body;
@@ -156,8 +170,20 @@ async function sendMessage(req, res) {
     if (session.user_id !== req.user.id) {
       return res.status(403).json({ message: 'Access denied' });
     }
+
+    // Check 30-day continuation window
+    const retention = getSessionRetentionInfo(session);
+    if (retention.is_expired) {
+      return res.status(400).json({
+        message: 'This chat session has expired after 30 days and cannot be continued. Please start a new session.',
+        expired: true,
+      });
+    }
+
+    // If the session was completed, reactivate it so it appears active again.
     if (session.status !== 'active') {
-      return res.status(400).json({ message: 'This session has been completed' });
+      await pool.query("UPDATE chat_sessions SET status = 'active' WHERE id = ?", [session_id]);
+      session.status = 'active';
     }
 
     // Pull prior turns BEFORE inserting the new user message to avoid duplication.
@@ -234,14 +260,58 @@ async function completeSession(req, res) {
        VALUES (?, 'chat_complete', ?, ?)`,
       [
         req.user.id,
-        `Your chat session about ${session.crop_type} in ${session.district} is complete and saved to your dashboard.`,
+        `Your chat session about ${session.crop_type} in ${session.district} is complete and saved to your dashboard. You can continue it within 30 days.`,
         session_id,
       ]
     );
 
-    return res.json({ success: true });
+    return res.json({ success: true, message: 'Session saved. You can continue it anytime within 30 days.' });
   } catch (err) {
     console.error('completeSession error:', err.message);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+// POST /api/chat/continue
+async function continueSession(req, res) {
+  const { session_id } = req.body;
+
+  if (!session_id) {
+    return res.status(400).json({ message: 'session_id is required' });
+  }
+
+  try {
+    const [sessions] = await pool.query(
+      'SELECT * FROM chat_sessions WHERE id = ? AND user_id = ?',
+      [session_id, req.user.id]
+    );
+    const session = sessions[0];
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    const retention = getSessionRetentionInfo(session);
+    if (retention.is_expired) {
+      return res.status(400).json({
+        message: 'This chat session has expired after 30 days and cannot be continued. Please start a new chat.',
+        expired: true,
+      });
+    }
+
+    if (session.status !== 'active') {
+      await pool.query("UPDATE chat_sessions SET status = 'active' WHERE id = ?", [session_id]);
+    }
+
+    return res.json({
+      success: true,
+      session: {
+        ...session,
+        status: 'active',
+        ...retention,
+      },
+    });
+  } catch (err) {
+    console.error('continueSession error:', err.message);
     return res.status(500).json({ message: 'Server error' });
   }
 }
@@ -258,7 +328,13 @@ async function getHistory(req, res) {
        ORDER BY s.created_at DESC`,
       [req.user.id]
     );
-    return res.json({ sessions });
+
+    const enhancedSessions = sessions.map((s) => ({
+      ...s,
+      ...getSessionRetentionInfo(s),
+    }));
+
+    return res.json({ sessions: enhancedSessions });
   } catch (err) {
     console.error('getHistory error:', err.message);
     return res.status(500).json({ message: 'Server error' });
@@ -284,9 +360,39 @@ async function getSession(req, res) {
       [sessionId]
     );
 
-    return res.json({ session, messages });
+    const enhancedSession = {
+      ...session,
+      ...getSessionRetentionInfo(session),
+    };
+
+    return res.json({ session: enhancedSession, messages });
   } catch (err) {
     console.error('getSession error:', err.message);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+// DELETE /api/chat/session/:id
+async function deleteSession(req, res) {
+  const sessionId = req.params.id;
+
+  try {
+    // Verify the session belongs to this farmer before deleting.
+    const [sessions] = await pool.query(
+      'SELECT id FROM chat_sessions WHERE id = ? AND user_id = ?',
+      [sessionId, req.user.id]
+    );
+    if (!sessions.length) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    // Remove messages first (FK constraint), then the session itself.
+    await pool.query('DELETE FROM chat_messages WHERE session_id = ?', [sessionId]);
+    await pool.query('DELETE FROM chat_sessions WHERE id = ?', [sessionId]);
+
+    return res.json({ message: 'Session deleted successfully' });
+  } catch (err) {
+    console.error('deleteSession error:', err.message);
     return res.status(500).json({ message: 'Server error' });
   }
 }
@@ -295,6 +401,8 @@ module.exports = {
   startSession,
   sendMessage,
   completeSession,
+  continueSession,
   getHistory,
   getSession,
+  deleteSession,
 };

@@ -2,10 +2,11 @@
 //   Chat History   — past chatbot sessions with a link to read the transcript.
 //   Disease Reports — detection results with view-detail and share-with-officer dialogs.
 //   Bookmarks       — saved advisory articles with language toggle and remove action.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Card,
@@ -45,6 +46,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import PlaceIcon from '@mui/icons-material/Place';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ShareIcon from '@mui/icons-material/Share';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import api from '../../api/axios';
@@ -121,6 +123,8 @@ export default function FarmerDashboard() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState('');
   const [reportLang, setReportLang] = useState(0); // 0 = EN, 1 = SI
+  const fileInputRef = useRef(null);
+  const [uploadingPic, setUploadingPic] = useState(false);
 
   // Share dialog
   const [shareOpen, setShareOpen] = useState(false);
@@ -134,6 +138,10 @@ export default function FarmerDashboard() {
   // Bookmarks language toggle
   const [bmLang, setBmLang] = useState('en');
   const [removingId, setRemovingId] = useState(null);
+
+  // Delete-chat confirmation dialog
+  const [deleteChatId, setDeleteChatId] = useState(null);
+  const [deletingChat, setDeletingChat] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -204,6 +212,28 @@ export default function FarmerDashboard() {
       setEditError(err.response?.data?.message || t('farmerDash.errUpdateProfile'));
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  async function handleProfilePicChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingPic(true);
+    setError('');
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const { data } = await api.post('/auth/profile-picture', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      localStorage.setItem('agrisl_token', data.token);
+      login(data.token);
+      setProfile(data.user);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not update profile picture');
+    } finally {
+      setUploadingPic(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
 
@@ -281,6 +311,23 @@ export default function FarmerDashboard() {
     }
   }
 
+  // ---- Delete chat session ----
+  // Asks for confirmation via deleteChatId state, then deletes on confirm.
+  async function confirmDeleteChat() {
+    if (!deleteChatId) return;
+    setDeletingChat(true);
+    try {
+      await api.delete(`/chat/session/${deleteChatId}`);
+      setChatSessions((prev) => prev.filter((s) => s.id !== deleteChatId));
+      setToast(t('farmerDash.toastChatDeleted') || 'Chat deleted successfully');
+    } catch {
+      setToast(t('farmerDash.toastChatDeleteErr') || 'Could not delete chat. Please try again.');
+    } finally {
+      setDeletingChat(false);
+      setDeleteChatId(null);
+    }
+  }
+
   const diseaseFound =
     report && report.disease_name && report.disease_name !== 'No disease detected';
 
@@ -349,13 +396,44 @@ export default function FarmerDashboard() {
               <CardContent>
                 <Stack
                   direction={{ xs: 'column', sm: 'row' }}
-                  spacing={2}
+                  spacing={3}
                   sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
                 >
-                  <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                      {profile?.name}
-                    </Typography>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ sm: 'center' }}>
+                    <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                      <Avatar 
+                        src={profile?.profile_picture ? `${UPLOADS_BASE}/${profile.profile_picture}` : undefined}
+                        sx={{ width: 80, height: 80, fontSize: 32, bgcolor: 'primary.main' }}
+                      >
+                        {profile?.name ? profile.name.charAt(0).toUpperCase() : '?'}
+                      </Avatar>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingPic}
+                        sx={{
+                          position: 'absolute',
+                          bottom: -4,
+                          right: -4,
+                          bgcolor: 'background.paper',
+                          border: '1px solid #ddd',
+                          '&:hover': { bgcolor: 'grey.100' }
+                        }}
+                      >
+                        {uploadingPic ? <CircularProgress size={16} /> : <EditIcon fontSize="small" />}
+                      </IconButton>
+                      <input 
+                        type="file" 
+                        accept="image/jpeg, image/png"
+                        hidden 
+                        ref={fileInputRef} 
+                        onChange={handleProfilePicChange} 
+                      />
+                    </Box>
+                    <Box>
+                      <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                        {profile?.name}
+                      </Typography>
                     <Stack
                       direction="row"
                       spacing={2}
@@ -382,6 +460,7 @@ export default function FarmerDashboard() {
                       </Stack>
                     </Stack>
                   </Box>
+                </Stack>
                   <Button
                     variant="outlined"
                     color="primary"
@@ -485,16 +564,28 @@ export default function FarmerDashboard() {
                               <AgricultureIcon color="primary" />
                               <Typography sx={{ fontWeight: 600 }}>{s.crop_type}</Typography>
                             </Stack>
-                            <Chip
-                              size="small"
-                              label={
-                                s.status === 'completed'
-                                  ? t('farmerDash.statusCompleted')
-                                  : t('farmerDash.statusActive')
-                              }
-                              color={s.status === 'completed' ? 'success' : 'info'}
-                              sx={{ fontFamily: BILINGUAL_FONT }}
-                            />
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                              <Chip
+                                size="small"
+                                label={
+                                  s.status === 'completed'
+                                    ? t('farmerDash.statusCompleted')
+                                    : t('farmerDash.statusActive')
+                                }
+                                color={s.status === 'completed' ? 'success' : 'info'}
+                                sx={{ fontFamily: BILINGUAL_FONT }}
+                              />
+                              <Tooltip title={t('farmerDash.deleteChat') || 'Delete chat'}>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => setDeleteChatId(s.id)}
+                                  sx={{ ml: 0.5 }}
+                                >
+                                  <DeleteOutlineIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
                           </Stack>
                           <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
                             <Chip size="small" variant="outlined" label={s.district} />
@@ -511,6 +602,19 @@ export default function FarmerDashboard() {
                               })}
                               sx={{ fontFamily: BILINGUAL_FONT }}
                             />
+                            {s.days_remaining !== undefined && (
+                              <Chip
+                                size="small"
+                                variant="outlined"
+                                color={s.is_expired ? 'default' : 'warning'}
+                                label={
+                                  s.is_expired
+                                    ? t('farmerDash.sessionExpired') || 'Expired'
+                                    : fmt(t('farmerDash.daysRemaining') || '{n}d left', { n: s.days_remaining })
+                                }
+                                sx={{ fontFamily: BILINGUAL_FONT }}
+                              />
+                            )}
                           </Stack>
                           <Stack
                             direction="row"
@@ -521,14 +625,29 @@ export default function FarmerDashboard() {
                             <Typography variant="caption" color="text.secondary">
                               {formatDate(s.created_at)}
                             </Typography>
-                            <Button
-                              size="small"
-                              startIcon={<VisibilityIcon />}
-                              onClick={() => navigate(`/chatbot/session/${s.id}`)}
-                              sx={{ fontFamily: BILINGUAL_FONT }}
-                            >
-                              {t('farmerDash.view')}
-                            </Button>
+                            <Stack direction="row" spacing={1}>
+                              {s.can_continue !== false && (
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="primary"
+                                  startIcon={<PlayArrowIcon fontSize="small" />}
+                                  onClick={() => navigate(`/chatbot?session=${s.id}`)}
+                                  sx={{ fontFamily: BILINGUAL_FONT, fontSize: '0.78rem', py: 0.25 }}
+                                >
+                                  {t('farmerDash.continueChat') || 'Continue'}
+                                </Button>
+                              )}
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<VisibilityIcon />}
+                                onClick={() => navigate(`/chatbot/session/${s.id}`)}
+                                sx={{ fontFamily: BILINGUAL_FONT, fontSize: '0.78rem', py: 0.25 }}
+                              >
+                                {t('farmerDash.view')}
+                              </Button>
+                            </Stack>
                           </Stack>
                         </CardContent>
                       </Card>
@@ -995,6 +1114,43 @@ export default function FarmerDashboard() {
               )}
             </Button>
           )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete chat confirmation dialog */}
+      <Dialog
+        open={!!deleteChatId}
+        onClose={() => !deletingChat && setDeleteChatId(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontFamily: BILINGUAL_FONT, fontWeight: 700 }}>
+          🗑️ {t('farmerDash.deleteChatTitle') || 'Delete Chat'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontFamily: BILINGUAL_FONT }}>
+            {t('farmerDash.deleteChatConfirm') ||
+              'Are you sure you want to delete this chat permanently? This action cannot be undone.'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setDeleteChatId(null)}
+            disabled={deletingChat}
+            sx={{ fontFamily: BILINGUAL_FONT }}
+          >
+            {t('farmerDash.cancel') || 'Cancel'}
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={confirmDeleteChat}
+            disabled={deletingChat}
+            startIcon={deletingChat ? <CircularProgress size={16} color="inherit" /> : <DeleteOutlineIcon />}
+            sx={{ fontFamily: BILINGUAL_FONT }}
+          >
+            {t('farmerDash.deleteConfirmBtn') || 'Delete Permanently'}
+          </Button>
         </DialogActions>
       </Dialog>
 

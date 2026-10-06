@@ -331,6 +331,8 @@ ML_SERVICE_URL=http://127.0.0.1:8000
 Then restart the backend (`npm run dev` in Terminal 1). The next disease
 detection upload will route through the ML model first.
 
+
+
 ## Key Design Notes
 
 1. **Separate concerns:** Server is API-only; client is a pure SPA (no server-side rendering). They communicate via REST + JSON.
