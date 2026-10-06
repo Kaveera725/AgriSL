@@ -139,6 +139,10 @@ export default function FarmerDashboard() {
   const [bmLang, setBmLang] = useState('en');
   const [removingId, setRemovingId] = useState(null);
 
+  // Delete-chat confirmation dialog
+  const [deleteChatId, setDeleteChatId] = useState(null);
+  const [deletingChat, setDeletingChat] = useState(false);
+
   useEffect(() => {
     let active = true;
     api
@@ -304,6 +308,23 @@ export default function FarmerDashboard() {
       setToast(t('farmerDash.toastBookmarkErr'));
     } finally {
       setRemovingId(null);
+    }
+  }
+
+  // ---- Delete chat session ----
+  // Asks for confirmation via deleteChatId state, then deletes on confirm.
+  async function confirmDeleteChat() {
+    if (!deleteChatId) return;
+    setDeletingChat(true);
+    try {
+      await api.delete(`/chat/session/${deleteChatId}`);
+      setChatSessions((prev) => prev.filter((s) => s.id !== deleteChatId));
+      setToast(t('farmerDash.toastChatDeleted') || 'Chat deleted successfully');
+    } catch {
+      setToast(t('farmerDash.toastChatDeleteErr') || 'Could not delete chat. Please try again.');
+    } finally {
+      setDeletingChat(false);
+      setDeleteChatId(null);
     }
   }
 
@@ -543,16 +564,28 @@ export default function FarmerDashboard() {
                               <AgricultureIcon color="primary" />
                               <Typography sx={{ fontWeight: 600 }}>{s.crop_type}</Typography>
                             </Stack>
-                            <Chip
-                              size="small"
-                              label={
-                                s.status === 'completed'
-                                  ? t('farmerDash.statusCompleted')
-                                  : t('farmerDash.statusActive')
-                              }
-                              color={s.status === 'completed' ? 'success' : 'info'}
-                              sx={{ fontFamily: BILINGUAL_FONT }}
-                            />
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                              <Chip
+                                size="small"
+                                label={
+                                  s.status === 'completed'
+                                    ? t('farmerDash.statusCompleted')
+                                    : t('farmerDash.statusActive')
+                                }
+                                color={s.status === 'completed' ? 'success' : 'info'}
+                                sx={{ fontFamily: BILINGUAL_FONT }}
+                              />
+                              <Tooltip title={t('farmerDash.deleteChat') || 'Delete chat'}>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => setDeleteChatId(s.id)}
+                                  sx={{ ml: 0.5 }}
+                                >
+                                  <DeleteOutlineIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
                           </Stack>
                           <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
                             <Chip size="small" variant="outlined" label={s.district} />
@@ -1081,6 +1114,43 @@ export default function FarmerDashboard() {
               )}
             </Button>
           )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete chat confirmation dialog */}
+      <Dialog
+        open={!!deleteChatId}
+        onClose={() => !deletingChat && setDeleteChatId(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontFamily: BILINGUAL_FONT, fontWeight: 700 }}>
+          🗑️ {t('farmerDash.deleteChatTitle') || 'Delete Chat'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontFamily: BILINGUAL_FONT }}>
+            {t('farmerDash.deleteChatConfirm') ||
+              'Are you sure you want to delete this chat permanently? This action cannot be undone.'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setDeleteChatId(null)}
+            disabled={deletingChat}
+            sx={{ fontFamily: BILINGUAL_FONT }}
+          >
+            {t('farmerDash.cancel') || 'Cancel'}
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={confirmDeleteChat}
+            disabled={deletingChat}
+            startIcon={deletingChat ? <CircularProgress size={16} color="inherit" /> : <DeleteOutlineIcon />}
+            sx={{ fontFamily: BILINGUAL_FONT }}
+          >
+            {t('farmerDash.deleteConfirmBtn') || 'Delete Permanently'}
+          </Button>
         </DialogActions>
       </Dialog>
 

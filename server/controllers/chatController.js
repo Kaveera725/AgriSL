@@ -372,6 +372,31 @@ async function getSession(req, res) {
   }
 }
 
+// DELETE /api/chat/session/:id
+async function deleteSession(req, res) {
+  const sessionId = req.params.id;
+
+  try {
+    // Verify the session belongs to this farmer before deleting.
+    const [sessions] = await pool.query(
+      'SELECT id FROM chat_sessions WHERE id = ? AND user_id = ?',
+      [sessionId, req.user.id]
+    );
+    if (!sessions.length) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    // Remove messages first (FK constraint), then the session itself.
+    await pool.query('DELETE FROM chat_messages WHERE session_id = ?', [sessionId]);
+    await pool.query('DELETE FROM chat_sessions WHERE id = ?', [sessionId]);
+
+    return res.json({ message: 'Session deleted successfully' });
+  } catch (err) {
+    console.error('deleteSession error:', err.message);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
 module.exports = {
   startSession,
   sendMessage,
@@ -379,4 +404,5 @@ module.exports = {
   continueSession,
   getHistory,
   getSession,
+  deleteSession,
 };
