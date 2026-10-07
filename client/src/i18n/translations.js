@@ -184,6 +184,11 @@ const translations = {
       deleteConfirmBtn: 'Delete Permanently',
       toastChatDeleted: '✅ Chat deleted successfully',
       toastChatDeleteErr: 'Could not delete chat. Please try again.',
+      deleteReport: 'Delete report',
+      deleteReportTitle: 'Delete Disease Report',
+      deleteReportConfirm: 'Are you sure you want to delete this disease report permanently? The uploaded image will also be removed. This action cannot be undone.',
+      toastReportDeleted: '✅ Report deleted successfully',
+      toastReportDeleteErr: 'Could not delete report. Please try again.',
     },
   },
 
@@ -378,6 +383,11 @@ const translations = {
       deleteConfirmBtn: 'ස්ථිරවම මකන්න',
       toastChatDeleted: '✅ සංවාදය සාර්ථකව මකා දමන ලදී',
       toastChatDeleteErr: 'සංවාදය මකා දැමිය නොහැකි විය. නැවත උත්සාහ කරන්න.',
+      deleteReport: 'වාර්තාව මකන්න',
+      deleteReportTitle: 'රෝග වාර්තාව මකන්න',
+      deleteReportConfirm: 'ඔබට මෙම රෝග වාර්තාව ස්ථිරවම මකා දැමීමට අවශ්‍ය ද? උඩුගත කළ රූපයද ඉවත් කෙරේ. මෙය ආපසු හැරවිය නොහැක.',
+      toastReportDeleted: '✅ වාර්තාව සාර්ථකව මකා දමන ලදී',
+      toastReportDeleteErr: 'වාර්තාව මකා දැමිය නොහැකි විය. නැවත උත්සාහ කරන්න.',
     },
   },
 };

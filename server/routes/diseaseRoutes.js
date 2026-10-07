@@ -8,6 +8,7 @@ const {
   getHistory,
   getReport,
   markReviewed,
+  deleteReport,
 } = require('../controllers/diseaseController');
 
 router.post('/', requireAuth, uploadImage, detect);
@@ -16,5 +17,6 @@ router.get('/history', requireAuth, getHistory);
 // Static segments above must precede the dynamic :id route.
 router.get('/:id', requireAuth, getReport);
 router.patch('/:id/reviewed', requireOfficer, markReviewed);
+router.delete('/:id', requireAuth, deleteReport);
 
 module.exports = router;

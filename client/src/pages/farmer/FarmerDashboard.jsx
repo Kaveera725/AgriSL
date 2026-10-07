@@ -143,6 +143,10 @@ export default function FarmerDashboard() {
   const [deleteChatId, setDeleteChatId] = useState(null);
   const [deletingChat, setDeletingChat] = useState(false);
 
+  // Delete-report confirmation dialog
+  const [deleteReportId, setDeleteReportId] = useState(null);
+  const [deletingReport, setDeletingReport] = useState(false);
+
   useEffect(() => {
     let active = true;
     api
@@ -325,6 +329,22 @@ export default function FarmerDashboard() {
     } finally {
       setDeletingChat(false);
       setDeleteChatId(null);
+    }
+  }
+
+  // ---- Delete disease report ----
+  async function confirmDeleteReport() {
+    if (!deleteReportId) return;
+    setDeletingReport(true);
+    try {
+      await api.delete(`/disease/${deleteReportId}`);
+      setDiseaseReports((prev) => prev.filter((r) => r.id !== deleteReportId));
+      setToast(t('farmerDash.toastReportDeleted') || '✅ Report deleted successfully');
+    } catch {
+      setToast(t('farmerDash.toastReportDeleteErr') || 'Could not delete report. Please try again.');
+    } finally {
+      setDeletingReport(false);
+      setDeleteReportId(null);
     }
   }
 
@@ -712,16 +732,27 @@ export default function FarmerDashboard() {
                               alignItems="flex-start"
                             >
                               <Typography sx={{ fontWeight: 600 }}>{r.crop_type}</Typography>
-                              <Chip
-                                size="small"
-                                label={
-                                  r.status === 'reviewed'
-                                    ? t('farmerDash.statusReviewed')
-                                    : t('farmerDash.statusPending')
-                                }
-                                color={r.status === 'reviewed' ? 'success' : 'warning'}
-                                sx={{ fontFamily: BILINGUAL_FONT }}
-                              />
+                              <Stack direction="row" spacing={0.5} alignItems="center">
+                                <Chip
+                                  size="small"
+                                  label={
+                                    r.status === 'reviewed'
+                                      ? t('farmerDash.statusReviewed')
+                                      : t('farmerDash.statusPending')
+                                  }
+                                  color={r.status === 'reviewed' ? 'success' : 'warning'}
+                                  sx={{ fontFamily: BILINGUAL_FONT }}
+                                />
+                                <Tooltip title={t('farmerDash.deleteReport') || 'Delete report'}>
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() => setDeleteReportId(r.id)}
+                                  >
+                                    <DeleteOutlineIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
                             </Stack>
                             <Typography
                               variant="subtitle2"
@@ -1147,6 +1178,43 @@ export default function FarmerDashboard() {
             onClick={confirmDeleteChat}
             disabled={deletingChat}
             startIcon={deletingChat ? <CircularProgress size={16} color="inherit" /> : <DeleteOutlineIcon />}
+            sx={{ fontFamily: BILINGUAL_FONT }}
+          >
+            {t('farmerDash.deleteConfirmBtn') || 'Delete Permanently'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete disease report confirmation dialog */}
+      <Dialog
+        open={!!deleteReportId}
+        onClose={() => !deletingReport && setDeleteReportId(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontFamily: BILINGUAL_FONT, fontWeight: 700 }}>
+          🗑️ {t('farmerDash.deleteReportTitle') || 'Delete Report'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontFamily: BILINGUAL_FONT }}>
+            {t('farmerDash.deleteReportConfirm') ||
+              'Are you sure you want to delete this disease report permanently? The uploaded image will also be removed. This action cannot be undone.'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setDeleteReportId(null)}
+            disabled={deletingReport}
+            sx={{ fontFamily: BILINGUAL_FONT }}
+          >
+            {t('farmerDash.cancel') || 'Cancel'}
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={confirmDeleteReport}
+            disabled={deletingReport}
+            startIcon={deletingReport ? <CircularProgress size={16} color="inherit" /> : <DeleteOutlineIcon />}
             sx={{ fontFamily: BILINGUAL_FONT }}
           >
             {t('farmerDash.deleteConfirmBtn') || 'Delete Permanently'}

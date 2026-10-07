@@ -514,10 +514,49 @@ async function markReviewed(req, res) {
   }
 }
 
+// DELETE /api/disease/:id
+// Farmers can only delete their own reports. The uploaded image file is also
+// removed from disk so orphaned files don't accumulate.
+async function deleteReport(req, res) {
+  const reportId = req.params.id;
+
+  try {
+    // Fetch the row first so we can verify ownership and get the image path.
+    const [rows] = await pool.query(
+      'SELECT user_id, image_path FROM disease_reports WHERE id = ?',
+      [reportId]
+    );
+    const report = rows[0];
+
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+    if (report.user_id !== req.user.id) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    // Remove the image file from disk (best-effort — don't fail if missing).
+    if (report.image_path) {
+      const imgPath = path.join(__dirname, '..', 'uploads', report.image_path);
+      try { fs.unlinkSync(imgPath); } catch (_) { /* ignore */ }
+    }
+
+    // Cascade: delete related shared_reports rows first (FK), then the report.
+    await pool.query('DELETE FROM shared_reports WHERE report_id = ?', [reportId]);
+    await pool.query('DELETE FROM disease_reports WHERE id = ?', [reportId]);
+
+    return res.json({ message: 'Report deleted successfully' });
+  } catch (err) {
+    console.error('deleteReport error:', err.message);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
 module.exports = {
   detect,
   shareWithOfficer,
   getHistory,
   getReport,
   markReviewed,
+  deleteReport,
 };
