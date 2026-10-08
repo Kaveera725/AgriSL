@@ -16,6 +16,7 @@ const { classifyDisease, enabled: diseaseModelEnabled } = require('../utils/dise
 // Stage 1: server-side TF.js MobileNetV2 model loaded from server/ml/model/model.json.
 // Returns null gracefully when model files are absent.
 const { predict: mlPredict } = require('../ml/diseaseModel');
+const { sanitizeSinhalaDiagnosis } = require('../utils/diseaseTranslations');
 
 // Build an absolute URL to a stored upload so clients can render the image.
 function imageUrl(req, filename) {
@@ -82,6 +83,12 @@ async function detectWithAI(req, plant, crop_type, district, mlResult) {
     Analyze this ${crop_type} plant image from ${district} district.
     Use the ML prediction as context but make your own expert assessment.
     
+    CRITICAL AGRICULTURAL TRANSLATION RULES FOR SINHALA (disease_name_si, symptoms_si, treatment_si):
+    - Use authentic Sri Lankan agricultural terms.
+    - Plant "rust" disease MUST be translated as "මලකඩ රෝගය" (NEVER as "කුකුළු" or "බොජුනේ").
+    - "Southern rust of corn" MUST be translated as "බඩඉරිඟු වල දක්ෂිණ මලකඩ රෝගය".
+    - "Blight" is "අංගමාරය", "Spot" is "ලප රෝගය", "Rot" is "කුණුවීම".
+    
     Respond ONLY in this exact JSON format (no markdown, no extra text):
     {
       "disease_name_en": "disease name in English or 'No disease detected'",
@@ -103,7 +110,7 @@ async function detectWithAI(req, plant, crop_type, district, mlResult) {
     { label: 'disease' }
   );
 
-  return parseModelJson(completion.choices[0].message.content);
+  return sanitizeSinhalaDiagnosis(parseModelJson(completion.choices[0].message.content));
 }
 
 // crop.health replies in English only. Translate its findings to Sinhala with the
@@ -111,6 +118,14 @@ async function detectWithAI(req, plant, crop_type, district, mlResult) {
 // falls back to showing English in the Sinhala fields if this throws.
 async function translateToSinhala({ disease_name_en, symptoms_en, treatment_en }) {
   const prompt = `Translate the following plant-disease information into natural, fluent Sri Lankan Sinhala.
+CRITICAL AGRICULTURAL TRANSLATION RULES:
+- Use standard Sri Lankan agricultural terminology.
+- "Rust" in plant diseases MUST be translated as "මලකඩ රෝගය" (NEVER translate as poultry/food like "කුකුළු" or "බොජුනේ").
+- "Southern rust of corn" MUST be translated as "බඩඉරිඟු වල දක්ෂිණ මලකඩ රෝගය".
+- "Blight" MUST be translated as "අංගමාරය".
+- "Spot" MUST be translated as "ලප රෝගය".
+- "Wilt" MUST be translated as "මැලවීම".
+
 Respond ONLY with valid JSON in this exact format (no markdown, no extra text):
 {"disease_name_si":"...","symptoms_si":"...","treatment_si":"..."}
 
@@ -127,7 +142,7 @@ treatment: ${treatment_en}`;
     { label: 'disease-translate' }
   );
 
-  return parseModelJson(completion.choices[0].message.content);
+  return sanitizeSinhalaDiagnosis(parseModelJson(completion.choices[0].message.content));
 }
 
 // --- Detector C: custom-trained ML microservice --------------------------
@@ -286,9 +301,10 @@ async function detect(req, res) {
           };
         }
 
-        const isModelSupportedCrop = ['tomato', 'potato', 'chilli', 'pepper', 'bell pepper'].some(
-          (c) => crop_type.toLowerCase().includes(c)
-        );
+        const isModelSupportedCrop = [
+          'tomato', 'potato', 'chilli', 'pepper', 'bell pepper',
+          'banana', 'corn', 'maize', 'tea', 'rice'
+        ].some((c) => crop_type.toLowerCase().includes(c));
 
         if (isModelSupportedCrop) {
           aiResult = await buildResultFromModel(req, plant, crop_type, district, pred, mlResult);
@@ -305,6 +321,11 @@ async function detect(req, res) {
     // Detector A: GPT-4o Vision — receives the Stage 1 ML result as context.
     if (!aiResult) {
       aiResult = await detectWithAI(req, plant, crop_type, district, mlResult);
+    }
+
+    // Final safety check: sanitize all Sinhala fields against agricultural mistranslations
+    if (aiResult) {
+      aiResult = sanitizeSinhalaDiagnosis(aiResult);
     }
 
     // -----------------------------------------------------------------------
