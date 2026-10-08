@@ -17,3 +17,37 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* AI Image Scanner Animation */
+@keyframes scannerSweep {
+  0% {
+    top: 2%;
+    opacity: 0.75;
+  }
+  50% {
+    top: 94%;
+    opacity: 1;
+  }
+  100% {
+    top: 2%;
+    opacity: 0.75;
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(46, 125, 50, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 26px rgba(76, 175, 80, 0.65);
+  }
+}
+
+@keyframes scanRadar {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 0% 100%;
+  }
+}

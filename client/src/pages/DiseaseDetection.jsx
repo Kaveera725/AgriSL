@@ -36,9 +36,11 @@ import {
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LocalFloristIcon from '@mui/icons-material/LocalFlorist';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
 import DiseaseResultCard from '../components/DiseaseResultCard';
+import ImageScannerView from '../components/ImageScannerView';
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 
@@ -219,245 +221,322 @@ export default function DiseaseDetection() {
     return 'error.main';
   }
 
-  // ---- Step 2: Result or Loading ----
-  if (loading) {
-    return (
-      <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
-        <Navbar />
-        <Container maxWidth="sm" sx={{ py: 6 }}>
-          <DiseaseResultCard loading={true} />
-        </Container>
-      </Box>
-    );
-  }
+  // ---- Render Unified Page ----
+  return (
+    <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50', pb: 8 }}>
+      <Navbar />
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        {/* ========================================================
+            PERSISTENT HEADER — Always visible across all states
+            ======================================================== */}
+        <Box sx={{ mb: 4, textAlign: 'center' }}>
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{ justifyContent: 'center', alignItems: 'center', mb: 1 }}
+          >
+            <LocalFloristIcon sx={{ color: 'success.main', fontSize: { xs: 28, sm: 36 } }} />
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{
+                fontWeight: 800,
+                color: 'primary.dark',
+                fontFamily: BILINGUAL_FONT,
+                letterSpacing: '-0.02em',
+                fontSize: { xs: '1.35rem', sm: '1.9rem' },
+              }}
+            >
+              Crop Disease Detection / බෝග රෝග හඳුනාගැනීම
+            </Typography>
+          </Stack>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontFamily: BILINGUAL_FONT, maxWidth: 620, mx: 'auto', lineHeight: 1.6 }}
+          >
+            Instant AI pathology inspection with Sri Lankan agricultural advisory & chemical guidelines
+            <br />
+            කෘතිම බුද්ධිය මඟින් බෝග රෝග සහ නිර්දේශිත ප්‍රතිකාර නිවැරදිව හඳුනාගන්න
+          </Typography>
+        </Box>
 
-  if (result) {
-    return (
-      <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
-        <Navbar />
-        <Container maxWidth="sm" sx={{ py: 6 }}>
-          <DiseaseResultCard
-            aiResult={result.ai_result || result}
-            mlResult={
-              result.ml_result ||
-              (result.ml_label
-                ? { className: result.ml_label, confidence: result.ml_confidence }
-                : null)
-            }
-            imageUrl={result.image_url}
-            onShare={openShareDialog}
-            onReset={resetForm}
-            showActions={true}
-          />
+        {/* ========================================================
+            STATE 1: Loading / AI Image Recognition Scanner Active
+            ======================================================== */}
+        {loading && (
+          <Container maxWidth="sm" disableGutters>
+            <ImageScannerView
+              imagePreview={imagePreview}
+              cropType={cropType}
+              district={district}
+            />
+          </Container>
+        )}
 
-          {/* Share dialog */}
-          <Dialog open={shareOpen} onClose={() => setShareOpen(false)} fullWidth maxWidth="xs">
-          <DialogTitle sx={{ fontFamily: BILINGUAL_FONT }}>
-            Share with Officer / නිලධාරියාට යවන්න
-          </DialogTitle>
-          <DialogContent>
-            {shared ? (
-              <Alert severity="success" sx={{ fontFamily: BILINGUAL_FONT }}>
-                Report shared successfully!
-              </Alert>
-            ) : (
-              <>
-                {shareError && (
+        {/* ========================================================
+            STATE 2: Diagnostic Result View
+            ======================================================== */}
+        {!loading && result && (
+          <Container maxWidth="sm" disableGutters>
+            <Stack
+              direction="row"
+              sx={{
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 2.5,
+                flexWrap: 'wrap',
+                gap: 1,
+              }}
+            >
+              <Button
+                startIcon={<RefreshIcon />}
+                variant="outlined"
+                color="primary"
+                onClick={resetForm}
+                sx={{ fontFamily: BILINGUAL_FONT, fontWeight: 600, textTransform: 'none' }}
+              >
+                Scan Another Leaf / නව පරීක්ෂණයක්
+              </Button>
+              <Chip
+                label={`${cropType || ''}${district ? ` • ${district}` : ''}`}
+                size="small"
+                variant="filled"
+                color="success"
+                sx={{ fontFamily: BILINGUAL_FONT, fontWeight: 600 }}
+              />
+            </Stack>
+
+            <DiseaseResultCard
+              aiResult={result.ai_result || result}
+              mlResult={
+                result.ml_result ||
+                (result.ml_label
+                  ? { className: result.ml_label, confidence: result.ml_confidence }
+                  : null)
+              }
+              imageUrl={result.image_url}
+              onShare={openShareDialog}
+              onReset={resetForm}
+              showActions={true}
+            />
+
+            {/* Share dialog */}
+            <Dialog open={shareOpen} onClose={() => setShareOpen(false)} fullWidth maxWidth="xs">
+              <DialogTitle sx={{ fontFamily: BILINGUAL_FONT }}>
+                Share with Officer / නිලධාරියාට යවන්න
+              </DialogTitle>
+              <DialogContent>
+                {shared ? (
+                  <Alert severity="success" sx={{ fontFamily: BILINGUAL_FONT }}>
+                    Report shared successfully!
+                  </Alert>
+                ) : (
+                  <>
+                    {shareError && (
+                      <Alert severity="error" sx={{ mb: 2 }}>
+                        {shareError}
+                      </Alert>
+                    )}
+                    {officers.length === 0 ? (
+                      <Typography color="text.secondary">
+                        No approved officers available.
+                      </Typography>
+                    ) : (
+                      <FormControl fullWidth sx={{ mt: 1 }}>
+                        <InputLabel id="officer-label">Select Officer</InputLabel>
+                        <Select
+                          labelId="officer-label"
+                          label="Select Officer"
+                          value={selectedOfficer}
+                          onChange={(e) => setSelectedOfficer(e.target.value)}
+                        >
+                          {officers.map((o) => (
+                            <MenuItem key={o.id} value={o.id}>
+                              {o.name} — {o.district}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  </>
+                )}
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setShareOpen(false)} disabled={sharing}>
+                  Cancel
+                </Button>
+                {!shared && (
+                  <Button
+                    variant="contained"
+                    onClick={handleShare}
+                    disabled={sharing || officers.length === 0}
+                  >
+                    {sharing ? <CircularProgress size={20} color="inherit" /> : 'Share'}
+                  </Button>
+                )}
+              </DialogActions>
+            </Dialog>
+          </Container>
+        )}
+
+        {/* ========================================================
+            STATE 3: Initial Crop Selection & Image Upload Form
+            ======================================================== */}
+        {!loading && !result && (
+          <Container maxWidth="sm" disableGutters>
+            <Card elevation={3} sx={{ borderRadius: 3 }}>
+              <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 700,
+                    color: 'text.primary',
+                    mb: 2,
+                    fontFamily: BILINGUAL_FONT,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <LocalFloristIcon color="success" />
+                  Select Crop & Upload Leaf Photo / බෝගය සහ ඡායාරූපය තෝරන්න
+                </Typography>
+
+                {formError && (
                   <Alert severity="error" sx={{ mb: 2 }}>
-                    {shareError}
+                    {formError}
                   </Alert>
                 )}
-                {officers.length === 0 ? (
-                  <Typography color="text.secondary">
-                    No approved officers available.
-                  </Typography>
-                ) : (
-                  <FormControl fullWidth sx={{ mt: 1 }}>
-                    <InputLabel id="officer-label">Select Officer</InputLabel>
+
+                <Box component="form" onSubmit={handleDetect}>
+                  <FormControl fullWidth margin="normal">
+                    <InputLabel id="crop-label">Crop Type</InputLabel>
                     <Select
-                      labelId="officer-label"
-                      label="Select Officer"
-                      value={selectedOfficer}
-                      onChange={(e) => setSelectedOfficer(e.target.value)}
+                      labelId="crop-label"
+                      label="Crop Type"
+                      value={cropType}
+                      onChange={(e) => setCropType(e.target.value)}
+                      sx={{ fontFamily: BILINGUAL_FONT }}
                     >
-                      {officers.map((o) => (
-                        <MenuItem key={o.id} value={o.id}>
-                          {o.name} — {o.district}
+                      {CROP_OPTIONS.map((c) => (
+                        <MenuItem key={c.value} value={c.value} sx={{ fontFamily: BILINGUAL_FONT }}>
+                          {c.label}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
-                )}
-              </>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setShareOpen(false)} disabled={sharing}>
-              Cancel
-            </Button>
-            {!shared && (
-              <Button
-                variant="contained"
-                onClick={handleShare}
-                disabled={sharing || officers.length === 0}
-              >
-                {sharing ? <CircularProgress size={20} color="inherit" /> : 'Share'}
-              </Button>
-            )}
-          </DialogActions>
-        </Dialog>
-      </Container>
-    </Box>
-  );
-}
 
-  // ---- Step 1: Form ----
-  return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
-      <Navbar />
-      <Container maxWidth="sm" sx={{ py: 6 }}>
-      <Card elevation={3}>
-        <CardContent sx={{ p: 4 }}>
-          <Typography
-            variant="h5"
-            align="center"
-            sx={{ fontWeight: 700, color: 'primary.main', mb: 3, fontFamily: BILINGUAL_FONT }}
-          >
-            Crop Disease Detection / බෝග රෝග හඳුනාගැනීම
-          </Typography>
+                  <FormControl fullWidth margin="normal">
+                    <InputLabel id="district-label">District</InputLabel>
+                    <Select
+                      labelId="district-label"
+                      label="District"
+                      value={district}
+                      onChange={(e) => setDistrict(e.target.value)}
+                    >
+                      {DISTRICTS.map((d) => (
+                        <MenuItem key={d} value={d}>
+                          {d}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
 
-          {formError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {formError}
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleDetect}>
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="crop-label">Crop Type</InputLabel>
-              <Select
-                labelId="crop-label"
-                label="Crop Type"
-                value={cropType}
-                onChange={(e) => setCropType(e.target.value)}
-                sx={{ fontFamily: BILINGUAL_FONT }}
-              >
-                {CROP_OPTIONS.map((c) => (
-                  <MenuItem key={c.value} value={c.value} sx={{ fontFamily: BILINGUAL_FONT }}>
-                    {c.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="district-label">District</InputLabel>
-              <Select
-                labelId="district-label"
-                label="District"
-                value={district}
-                onChange={(e) => setDistrict(e.target.value)}
-              >
-                {DISTRICTS.map((d) => (
-                  <MenuItem key={d} value={d}>
-                    {d}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {/* Image upload area */}
-            <Box
-              onClick={() => fileInputRef.current?.click()}
-              sx={{
-                mt: 2,
-                border: '2px dashed',
-                borderColor: uploadError ? 'error.main' : 'primary.light',
-                borderRadius: 2,
-                p: 3,
-                textAlign: 'center',
-                cursor: 'pointer',
-                bgcolor: 'action.hover',
-                '&:hover': { bgcolor: 'action.selected' },
-              }}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png"
-                style={{ display: 'none' }}
-                onChange={handleFileChange}
-              />
-              {imagePreview ? (
-                <Box>
+                  {/* Image upload area */}
                   <Box
-                    component="img"
-                    src={imagePreview}
-                    alt="Preview"
-                    ref={imgPreviewRef}
-                    crossOrigin="anonymous"
-                    sx={{ maxHeight: 180, maxWidth: '100%', borderRadius: 1, mb: 1 }}
-                  />
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    {imageFile.name} — click to change
-                  </Typography>
-                  {/* Stage 1: instant TF.js pre-classification chip */}
-                  {tfLoading && (
-                    <Chip
-                      label="ML model analysing…"
-                      size="small"
-                      color="default"
-                      variant="outlined"
-                      sx={{ mt: 1, fontFamily: BILINGUAL_FONT }}
+                    onClick={() => fileInputRef.current?.click()}
+                    sx={{
+                      mt: 2,
+                      border: '2px dashed',
+                      borderColor: uploadError ? 'error.main' : 'success.light',
+                      borderRadius: 2,
+                      p: 3,
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      bgcolor: imagePreview ? 'success.50' : 'action.hover',
+                      transition: 'all 0.2s ease',
+                      '&:hover': { bgcolor: 'action.selected', borderColor: 'success.main' },
+                    }}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      style={{ display: 'none' }}
+                      onChange={handleFileChange}
                     />
+                    {imagePreview ? (
+                      <Box>
+                        <Box
+                          component="img"
+                          src={imagePreview}
+                          alt="Preview"
+                          ref={imgPreviewRef}
+                          crossOrigin="anonymous"
+                          sx={{ maxHeight: 200, maxWidth: '100%', borderRadius: 2, mb: 1, boxShadow: 1 }}
+                        />
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          {imageFile.name} — click to change / වෙනස් කිරීමට ක්ලික් කරන්න
+                        </Typography>
+                        {/* Stage 1: instant TF.js pre-classification chip */}
+                        {tfLoading && (
+                          <Chip
+                            label="ML model analysing…"
+                            size="small"
+                            color="default"
+                            variant="outlined"
+                            sx={{ mt: 1, fontFamily: BILINGUAL_FONT }}
+                          />
+                        )}
+                        {!tfLoading && tfLabel && !tfError && (
+                          <Chip
+                            label={`Pre-check: ${tfLabel}${tfConfidence != null ? ` · ${tfConfidence}%` : ''}`}
+                            size="small"
+                            color={tfConfidence >= 70 ? 'success' : tfConfidence >= 40 ? 'warning' : 'default'}
+                            variant="filled"
+                            sx={{ mt: 1, fontWeight: 600, fontFamily: BILINGUAL_FONT }}
+                          />
+                        )}
+                      </Box>
+                    ) : (
+                      <Box>
+                        <UploadFileIcon sx={{ fontSize: 48, color: 'success.main', mb: 1 }} />
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 600, color: 'text.primary', fontFamily: BILINGUAL_FONT }}
+                        >
+                          Click to upload plant image / පත්‍රයේ ඡායාරූපය උඩුගත කරන්න
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          JPG or PNG, max 5 MB
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                  {uploadError && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                      {uploadError}
+                    </Typography>
                   )}
-                  {!tfLoading && tfLabel && !tfError && (
-                    <Chip
-                      label={`Stage 1 ML: ${tfLabel}${tfConfidence != null ? ` · ${tfConfidence}%` : ''}`}
-                      size="small"
-                      color={tfConfidence >= 70 ? 'success' : tfConfidence >= 40 ? 'warning' : 'default'}
-                      variant="filled"
-                      sx={{ mt: 1, fontWeight: 600, fontFamily: BILINGUAL_FONT }}
-                    />
-                  )}
-                </Box>
-              ) : (
-                <Box>
-                  <UploadFileIcon sx={{ fontSize: 48, color: 'primary.light', mb: 1 }} />
-                  <Typography variant="body2" color="text.secondary" sx={{ fontFamily: BILINGUAL_FONT }}>
-                    Click to upload plant image / රූපය උඩුගත කරන්න
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    JPG or PNG, max 5 MB
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-            {uploadError && (
-              <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
-                {uploadError}
-              </Typography>
-            )}
 
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              size="large"
-              disabled={loading}
-              sx={{ mt: 4, fontFamily: BILINGUAL_FONT }}
-            >
-              {loading ? (
-                <CircularProgress size={24} color="inherit" />
-              ) : (
-                'Detect Disease / රෝගය හඳුනා ගන්න'
-              )}
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
-    </Container>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    size="large"
+                    disabled={loading || !cropType || !district || !imageFile}
+                    sx={{ mt: 3.5, py: 1.5, fontFamily: BILINGUAL_FONT, fontSize: '1rem', fontWeight: 700 }}
+                  >
+                    Detect Disease / රෝගය හඳුනා ගන්න
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Container>
+        )}
+      </Container>
     </Box>
   );
 }

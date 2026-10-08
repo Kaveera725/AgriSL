@@ -1,0 +1,396 @@
+import { useState, useEffect } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  LinearProgress,
+  Stack,
+  Typography,
+} from '@mui/material';
+import BiotechIcon from '@mui/icons-material/Biotech';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CircularProgress from '@mui/material/CircularProgress';
+import RadianceIcon from '@mui/icons-material/AutoAwesome';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import SpaIcon from '@mui/icons-material/Spa';
+
+const BILINGUAL_FONT = "'Noto Sans Sinhala', Roboto, sans-serif";
+
+const SCAN_STAGES = [
+  {
+    titleEn: 'Preprocessing & Normalizing Image',
+    titleSi: 'ඡායාරූපය විශ්ලේෂණය සඳහා සකස් කිරීම',
+    descEn: 'Scaling pixels & optimizing leaf clarity',
+    descSi: 'පත්‍රයේ පැහැදිලිකම ප්‍රශස්ත කිරීම',
+  },
+  {
+    titleEn: 'Scanning Foliage Patterns (35 Disease Classes)',
+    titleSi: 'පත්‍ර ලක්ෂණ සහ රෝග රටා 35ක් පරීක්ෂා කිරීම',
+    descEn: 'MobileNetV2 neural network inspecting lesions & texture',
+    descSi: 'කෘතිම බුද්ධි ආකෘතිය මඟින් රෝග ලක්ෂණ සෙවීම',
+  },
+  {
+    titleEn: 'Formulating Sri Lankan Pathology Advisory',
+    titleSi: 'දේශීය කෘෂිකාර්මික උපදෙස් සහ ප්‍රතිකාර සකස් කිරීම',
+    descEn: 'Matching recommended treatments, dosages & recovery plan',
+    descSi: 'නිර්දේශිත රසායනික/කාබනික ප්‍රතිකාර සහ මාත්‍රා තහවුරු කිරීම',
+  },
+];
+
+export default function ImageScannerView({
+  imagePreview,
+  cropType,
+  district,
+}) {
+  const [activeStage, setActiveStage] = useState(0);
+
+  // Progressive simulated stages for smooth farmer feedback
+  useEffect(() => {
+    const timer1 = setTimeout(() => setActiveStage(1), 1400);
+    const timer2 = setTimeout(() => setActiveStage(2), 3400);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, []);
+
+  return (
+    <Card
+      elevation={4}
+      sx={{
+        borderRadius: 3,
+        overflow: 'hidden',
+        border: '1px solid',
+        borderColor: 'success.light',
+        boxShadow: '0 8px 32px rgba(46, 125, 50, 0.12)',
+        bgcolor: '#ffffff',
+      }}
+    >
+      {/* Top Banner Status */}
+      <Box
+        sx={{
+          bgcolor: 'success.dark',
+          color: '#ffffff',
+          px: { xs: 2, sm: 3 },
+          py: 1.5,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 1,
+        }}
+      >
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+          <BiotechIcon sx={{ fontSize: 24, animation: 'pulse 1.5s infinite' }} />
+          <Typography
+            variant="subtitle1"
+            sx={{ fontWeight: 700, fontFamily: BILINGUAL_FONT, letterSpacing: '0.02em' }}
+          >
+            AI Image Recognition Active / පරීක්ෂණ ක්‍රියාවලිය ක්‍රියාත්මකයි
+          </Typography>
+        </Stack>
+        <Chip
+          icon={<RadianceIcon sx={{ '&&': { color: '#ffffff' } }} />}
+          label="Neural Scanner"
+          size="small"
+          sx={{
+            bgcolor: 'rgba(255, 255, 255, 0.2)',
+            color: '#ffffff',
+            fontWeight: 600,
+            backdropFilter: 'blur(4px)',
+          }}
+        />
+      </Box>
+
+      {/* Selected Crop & District context pill strip */}
+      <Box
+        sx={{
+          bgcolor: 'grey.50',
+          px: { xs: 2, sm: 3 },
+          py: 1.25,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}>
+            Target:
+          </Typography>
+          {cropType && (
+            <Chip
+              icon={<SpaIcon sx={{ fontSize: 16 }} />}
+              label={`Crop: ${cropType}`}
+              size="small"
+              color="primary"
+              variant="outlined"
+              sx={{ fontWeight: 600, fontFamily: BILINGUAL_FONT }}
+            />
+          )}
+          {district && (
+            <Chip
+              icon={<LocationOnIcon sx={{ fontSize: 16 }} />}
+              label={`District: ${district}`}
+              size="small"
+              variant="outlined"
+              sx={{ fontWeight: 500, fontFamily: BILINGUAL_FONT }}
+            />
+          )}
+          <Chip
+            label="35-Class Model"
+            size="small"
+            color="success"
+            sx={{ fontWeight: 600, ml: 'auto' }}
+          />
+        </Stack>
+      </Box>
+
+      {/* Image Scanner Viewport with Laser Beam Overlay */}
+      <Box
+        sx={{
+          position: 'relative',
+          bgcolor: '#0a160d',
+          minHeight: 280,
+          maxHeight: 380,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          p: 1.5,
+        }}
+      >
+        {imagePreview ? (
+          <Box
+            component="img"
+            src={imagePreview}
+            alt="Scanning Leaf"
+            sx={{
+              maxHeight: 340,
+              maxWidth: '100%',
+              borderRadius: 2,
+              objectFit: 'contain',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+            }}
+          />
+        ) : (
+          <Box sx={{ py: 8, color: 'grey.400', textAlign: 'center' }}>
+            <SpaIcon sx={{ fontSize: 60, opacity: 0.5, mb: 1 }} />
+            <Typography variant="body2">Processing image buffer...</Typography>
+          </Box>
+        )}
+
+        {/* Reticle Corner Brackets */}
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 16,
+            pointerEvents: 'none',
+            '&::before, &::after': {
+              content: '""',
+              position: 'absolute',
+              width: 28,
+              height: 28,
+              borderColor: '#00e676',
+            },
+            '&::before': {
+              top: 0,
+              left: 0,
+              borderTop: '3px solid',
+              borderLeft: '3px solid',
+            },
+            '&::after': {
+              top: 0,
+              right: 0,
+              borderTop: '3px solid',
+              borderRight: '3px solid',
+            },
+          }}
+        >
+          {/* Bottom Corners */}
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: 28,
+              height: 28,
+              borderBottom: '3px solid #00e676',
+              borderLeft: '3px solid #00e676',
+            }}
+          />
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: 0,
+              right: 0,
+              width: 28,
+              height: 28,
+              borderBottom: '3px solid #00e676',
+              borderRight: '3px solid #00e676',
+            }}
+          />
+        </Box>
+
+        {/* Sweeping Laser Scan Line */}
+        <Box
+          sx={{
+            position: 'absolute',
+            left: 16,
+            right: 16,
+            height: '4px',
+            background: 'linear-gradient(90deg, rgba(0,230,118,0) 0%, #00e676 50%, rgba(0,230,118,0) 100%)',
+            boxShadow: '0 0 16px 4px rgba(0, 230, 118, 0.75)',
+            animation: 'scannerSweep 2.2s ease-in-out infinite',
+            pointerEvents: 'none',
+            zIndex: 2,
+          }}
+        />
+
+        {/* Floating Scanner Badge */}
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: 24,
+            bgcolor: 'rgba(10, 22, 13, 0.85)',
+            color: '#00e676',
+            border: '1px solid rgba(0, 230, 118, 0.4)',
+            borderRadius: 5,
+            px: 2,
+            py: 0.5,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            backdropFilter: 'blur(8px)',
+            zIndex: 3,
+          }}
+        >
+          <CircularProgress size={14} thickness={6} sx={{ color: '#00e676' }} />
+          <Typography
+            variant="caption"
+            sx={{ fontWeight: 600, letterSpacing: '0.03em', fontFamily: BILINGUAL_FONT }}
+          >
+            Foliage Scanner Active / පටක සහ පැල්ලම් විශ්ලේෂණය...
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* Progress Bar */}
+      <LinearProgress
+        color="success"
+        sx={{
+          height: 6,
+          bgcolor: 'success.light',
+          '& .MuiLinearProgress-bar': {
+            background: 'linear-gradient(90deg, #2e7d32 0%, #00e676 50%, #43a047 100%)',
+          },
+        }}
+      />
+
+      {/* Diagnostic Steps & Farmer Reassurance */}
+      <CardContent sx={{ p: { xs: 2.5, sm: 3.5 } }}>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 700,
+            color: 'text.secondary',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            mb: 2,
+          }}
+        >
+          Diagnostic Progress / රෝග විනිශ්චය පියවර
+        </Typography>
+
+        <Stack spacing={2}>
+          {SCAN_STAGES.map((stg, idx) => {
+            const isCompleted = activeStage > idx;
+            const isCurrent = activeStage === idx;
+
+            return (
+              <Box
+                key={idx}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 1.5,
+                  p: 1.5,
+                  borderRadius: 2,
+                  bgcolor: isCurrent ? 'success.50' : 'transparent',
+                  border: isCurrent ? '1px solid' : '1px solid transparent',
+                  borderColor: isCurrent ? 'success.light' : 'transparent',
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                <Box sx={{ mt: 0.25 }}>
+                  {isCompleted ? (
+                    <CheckCircleIcon sx={{ color: 'success.main', fontSize: 22 }} />
+                  ) : isCurrent ? (
+                    <CircularProgress size={20} color="success" thickness={5} />
+                  ) : (
+                    <Box
+                      sx={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: '50%',
+                        border: '2px solid',
+                        borderColor: 'grey.300',
+                      }}
+                    />
+                  )}
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: isCurrent ? 700 : isCompleted ? 600 : 500,
+                      color: isCurrent ? 'success.dark' : isCompleted ? 'text.primary' : 'text.disabled',
+                      fontFamily: BILINGUAL_FONT,
+                    }}
+                  >
+                    {stg.titleEn}
+                    <Typography
+                      component="span"
+                      variant="caption"
+                      sx={{ display: 'block', color: isCurrent ? 'success.main' : 'text.secondary', fontWeight: 500 }}
+                    >
+                      {stg.titleSi}
+                    </Typography>
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mt: 0.25, display: 'block' }}
+                  >
+                    {stg.descEn} • {stg.descSi}
+                  </Typography>
+                </Box>
+              </Box>
+            );
+          })}
+        </Stack>
+
+        {/* Farmer Reassurance Banner */}
+        <Box
+          sx={{
+            mt: 3,
+            p: 2,
+            borderRadius: 2,
+            bgcolor: 'grey.50',
+            border: '1px dashed',
+            borderColor: 'grey.300',
+            textAlign: 'center',
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{ color: 'text.secondary', fontFamily: BILINGUAL_FONT, lineHeight: 1.6 }}
+          >
+            Please wait a few moments while our agricultural system analyzes the leaf.
+            <br />
+            <strong>කරුණාකර රැඳී සිටින්න.</strong> කෘතිම බුද්ධි ආකෘතිය මඟින් බෝග රෝග රටා 35ක් සමඟ සසඳා නිවැරදි ප්‍රතිකාර සකස් කරමින් පවතී.
+          </Typography>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+}
