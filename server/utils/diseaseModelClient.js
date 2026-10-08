@@ -19,17 +19,20 @@ function enabled() {
  * @param {string} [mimetype] — e.g. "image/jpeg"
  * @returns {Promise<{crop:string|null, disease:string, isHealthy:boolean, probability:number|null, top_3:Array}|null>}
  */
-async function classifyDisease(imagePath, mimetype) {
+async function classifyDisease(imagePath, mimetype, cropType) {
   if (!enabled()) return null;
 
   try {
-    const d = await callMicroservice(imagePath, 'leaf.jpg');
+    const d = await callMicroservice(imagePath, 'leaf.jpg', cropType);
     if (!d || !d.class_name) return null;
 
-    // Parse class_name: e.g. "Tomato_Late_Blight" -> crop: "Tomato", disease: "Late Blight"
-    const parts = d.class_name.split(/[_]+/);
-    const crop = parts[0] || null;
-    const diseaseName = parts.slice(1).join(' ') || d.class_name;
+    // Parse class_name: e.g. "Bell_Pepper_Bacterial_Spot" -> crop: "Bell Pepper", disease: "Bacterial Spot"
+    const CROPS = ['Bell_Pepper', 'Banana', 'Corn', 'Potato', 'Rice', 'Tea', 'Tomato'];
+    const prefix = CROPS.find((p) => d.class_name.startsWith(p + '_'));
+    const crop = prefix ? prefix.replace('_', ' ') : d.class_name.split('_')[0];
+    const diseaseName = prefix
+      ? d.class_name.slice(prefix.length + 1).replace(/_/g, ' ')
+      : d.class_name.replace(/_/g, ' ');
     const isHealthy = d.class_name.toLowerCase().includes('healthy');
 
     return {
@@ -39,6 +42,8 @@ async function classifyDisease(imagePath, mimetype) {
       probability: typeof d.confidence === 'number' ? d.confidence : null,
       classIndex: null,
       top_3: d.top_3 || [],
+      raw_class_name: d.raw_class_name,
+      raw_confidence: d.raw_confidence,
     };
   } catch (err) {
     console.warn('[diseaseModelClient] Error calling ML microservice:', err.message);

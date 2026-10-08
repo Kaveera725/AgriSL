@@ -11,7 +11,7 @@ const ML_SERVICE_URL = process.env.ML_SERVICE_URL || process.env.DISEASE_MODEL_U
  * @param {string} [filename='leaf.jpg'] - Filename for form-data upload
  * @returns {Promise<{class_name: string, confidence: number, top_3: Array<{class_name: string, confidence: number}>}>}
  */
-async function classifyDisease(imageBuffer, filename = 'leaf.jpg') {
+async function classifyDisease(imageBuffer, filename = 'leaf.jpg', crop = null) {
   let buf = imageBuffer;
   if (typeof imageBuffer === 'string') {
     buf = fs.readFileSync(imageBuffer);
@@ -19,27 +19,30 @@ async function classifyDisease(imageBuffer, filename = 'leaf.jpg') {
 
   const form = new FormData();
   form.append('file', buf, filename);
+  if (crop) form.append('crop', crop);
 
   const response = await axios.post(`${ML_SERVICE_URL}/predict`, form, {
     headers: form.getHeaders(),
     timeout: 15000,
   });
-  return response.data; // { class_name, confidence, top_3 }
+  return response.data; // { class_name, confidence, top_3, raw_class_name, raw_confidence }
 }
 
 /**
  * Stage 1 inference wrapper for diseaseController.
  * Returns null gracefully if microservice is offline or in test mode.
  */
-async function predict(imagePath) {
+async function predict(imagePath, crop = null) {
   if (process.env.NODE_ENV === 'test') return null;
   try {
-    const data = await classifyDisease(imagePath);
+    const data = await classifyDisease(imagePath, 'leaf.jpg', crop);
     if (!data) return null;
     return {
       className: data.class_name,
       confidence: Math.round(data.confidence * 10000) / 100, // 0-100 percentage
       top_3: data.top_3,
+      rawClassName: data.raw_class_name,
+      rawConfidence: data.raw_confidence != null ? Math.round(data.raw_confidence * 10000) / 100 : null,
     };
   } catch (err) {
     console.warn('[disease-ml] ML microservice not reachable or error:', err.message);

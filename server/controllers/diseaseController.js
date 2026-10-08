@@ -238,7 +238,7 @@ async function detect(req, res) {
     // Runs on the uploaded image before any external API call. Returns null
     // when model files are not present (graceful degradation).
     // -----------------------------------------------------------------------
-    const mlResult = await mlPredict(req.file.path);
+    const mlResult = await mlPredict(req.file.path, crop_type);
 
     // ML column values for the DB — populated from server-side predict() first,
     // then fall back to the browser TF.js hint (tf_label / tf_confidence).
@@ -270,7 +270,7 @@ async function detect(req, res) {
 
     // Detector C: external ML microservice (PlantVillage model: Tomato, Potato, Bell Pepper/Chilli).
     if (diseaseModelEnabled()) {
-      const pred = await classifyDisease(req.file.path, req.file.mimetype);
+      const pred = await classifyDisease(req.file.path, req.file.mimetype, crop_type);
       if (pred) {
         if (!mlResult) {
           mlPrediction = pred.disease || mlPrediction;

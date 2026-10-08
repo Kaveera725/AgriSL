@@ -44,12 +44,13 @@ const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 const CROP_OPTIONS = [
   { value: 'Tomato', label: 'Tomato (තක්කාලි)' },
   { value: 'Potato', label: 'Potato (අර්තාපල්)' },
-  { value: 'Chilli', label: 'Chilli (මිරිස්)' },
+  { value: 'Chilli', label: 'Chilli / Bell Pepper (මිරිස්)' },
+  { value: 'Banana', label: 'Banana (කෙසෙල්)' },
   { value: 'Rice', label: 'Rice (වී)' },
   { value: 'Tea', label: 'Tea (තේ)' },
+  { value: 'Maize', label: 'Corn / Maize (ඉරිඟු)' },
   { value: 'Coconut', label: 'Coconut (පොල්)' },
   { value: 'Rubber', label: 'Rubber (රබර්)' },
-  { value: 'Maize', label: 'Maize (ඉරිඟු)' },
   { value: 'Onions', label: 'Onions (ළූණු)' },
 ];
 
