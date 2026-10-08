@@ -38,6 +38,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LocalFloristIcon from '@mui/icons-material/LocalFlorist';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
+import DiseaseResultCard from '../components/DiseaseResultCard';
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 
@@ -218,156 +219,39 @@ export default function DiseaseDetection() {
     return 'error.main';
   }
 
-  // ---- Step 2: Result ----
+  // ---- Step 2: Result or Loading ----
+  if (loading) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
+        <Navbar />
+        <Container maxWidth="sm" sx={{ py: 6 }}>
+          <DiseaseResultCard loading={true} />
+        </Container>
+      </Box>
+    );
+  }
+
   if (result) {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
         <Navbar />
         <Container maxWidth="sm" sx={{ py: 6 }}>
-        <Card elevation={3}>
-          {/* Uploaded image */}
-          {result.image_url && (
-            <CardMedia
-              component="img"
-              height="220"
-              image={result.image_url}
-              alt="Uploaded plant"
-              sx={{ objectFit: 'cover' }}
-            />
-          )}
+          <DiseaseResultCard
+            aiResult={result.ai_result || result}
+            mlResult={
+              result.ml_result ||
+              (result.ml_label
+                ? { className: result.ml_label, confidence: result.ml_confidence }
+                : null)
+            }
+            imageUrl={result.image_url}
+            onShare={openShareDialog}
+            onReset={resetForm}
+            showActions={true}
+          />
 
-          <CardContent sx={{ p: 4 }}>
-            <Typography
-              variant="h5"
-              align="center"
-              sx={{
-                fontWeight: 700,
-                mb: 1,
-                fontFamily: BILINGUAL_FONT,
-                color: diseaseFound ? 'error.main' : 'success.main',
-              }}
-            >
-              {result.disease_name_en}
-            </Typography>
-            <Typography
-              variant="h6"
-              align="center"
-              sx={{ fontFamily: BILINGUAL_FONT, color: diseaseFound ? 'error.main' : 'success.main', mb: 2 }}
-            >
-              {result.disease_name_si}
-            </Typography>
-
-            <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 1, mb: 3 }}>
-              <Chip
-                label={`Confidence: ${result.confidence}`}
-                color={CONFIDENCE_COLOR[result.confidence] || 'default'}
-                variant="filled"
-                sx={{ fontWeight: 600 }}
-              />
-              {/* Stage 1 TF.js MobileNetV2 pre-classification chip (shown when server echoes it back) */}
-              {result.ml_label && (
-                <Chip
-                  label={`ML pre-diagnosis: ${result.ml_label}${result.ml_confidence != null ? ` · ${result.ml_confidence}%` : ''}`}
-                  color="info"
-                  variant="outlined"
-                  sx={{ fontWeight: 500, maxWidth: '100%', fontFamily: BILINGUAL_FONT }}
-                />
-              )}
-              {/* PlantNet species identification (shown only when available) */}
-              {result.plantnet && (
-                <Chip
-                  icon={<LocalFloristIcon />}
-                  label={
-                    result.plantnet.scorePct != null
-                      ? `${result.plantnet.label} · ${result.plantnet.scorePct}% match`
-                      : result.plantnet.label
-                  }
-                  color="success"
-                  variant="outlined"
-                  sx={{ fontWeight: 500, maxWidth: '100%' }}
-                />
-              )}
-            </Box>
-
-            <Tabs
-              value={tab}
-              onChange={(_, v) => setTab(v)}
-              centered
-              sx={{ mb: 2 }}
-            >
-              <Tab label="English" />
-              <Tab label="සිංහල" sx={{ fontFamily: BILINGUAL_FONT }} />
-            </Tabs>
-
-            {tab === 0 ? (
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Symptoms
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 2 }}>
-                  {result.symptoms_en}
-                </Typography>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Treatment
-                </Typography>
-                <Typography variant="body2">{result.treatment_en}</Typography>
-              </Box>
-            ) : (
-              <Box sx={{ fontFamily: BILINGUAL_FONT }}>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  gutterBottom
-                  sx={{ fontFamily: BILINGUAL_FONT }}
-                >
-                  රෝග ලක්ෂණ
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 2, fontFamily: BILINGUAL_FONT }}>
-                  {result.symptoms_si}
-                </Typography>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  gutterBottom
-                  sx={{ fontFamily: BILINGUAL_FONT }}
-                >
-                  ප්‍රතිකාරය
-                </Typography>
-                <Typography variant="body2" sx={{ fontFamily: BILINGUAL_FONT }}>
-                  {result.treatment_si}
-                </Typography>
-              </Box>
-            )}
-
-            <Stack spacing={1.5} sx={{ mt: 3 }}>
-              <Button
-                variant="outlined"
-                color="success"
-                startIcon={<CheckCircleIcon />}
-                disabled
-                fullWidth
-                sx={{ fontFamily: BILINGUAL_FONT }}
-              >
-                Saved to Dashboard / උපකරණ පුවරුවට සුරැකිණි
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                fullWidth
-                sx={{ fontFamily: BILINGUAL_FONT }}
-                onClick={openShareDialog}
-              >
-                Share with Agricultural Officer / කෘෂිකාර්මික නිලධාරියාට යවන්න
-              </Button>
-              <Button variant="text" fullWidth onClick={resetForm}>
-                Detect Another / තවත් පරීක්ෂා කරන්න
-              </Button>
-            </Stack>
-          </CardContent>
-        </Card>
-
-        {/* Share dialog */}
-        <Dialog open={shareOpen} onClose={() => setShareOpen(false)} fullWidth maxWidth="xs">
+          {/* Share dialog */}
+          <Dialog open={shareOpen} onClose={() => setShareOpen(false)} fullWidth maxWidth="xs">
           <DialogTitle sx={{ fontFamily: BILINGUAL_FONT }}>
             Share with Officer / නිලධාරියාට යවන්න
           </DialogTitle>

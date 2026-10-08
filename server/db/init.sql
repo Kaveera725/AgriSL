@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS disease_reports (
   symptoms TEXT,
   treatment_en TEXT,
   treatment_si TEXT,
+  full_result TEXT NULL COMMENT 'Complete structured AI diagnosis JSON',
   -- Custom ML model output (TensorFlow.js MobileNetV2 / Python microservice).
   -- Null when the ML model was not used or did not produce a prediction.
   ml_prediction VARCHAR(200) NULL COMMENT 'Disease class predicted by custom ML model',

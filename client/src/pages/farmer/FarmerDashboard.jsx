@@ -53,6 +53,7 @@ import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import Navbar from '../../components/Navbar';
+import DiseaseResultCard from '../../components/DiseaseResultCard';
 
 // Fill {placeholders} in a translated string, e.g. fmt('Show ({n})', { n: 3 }).
 function fmt(template, vars = {}) {
@@ -160,6 +161,15 @@ export default function FarmerDashboard() {
         setDiseaseReports(data.disease_reports || []);
         setBookmarks(data.bookmarks || []);
         setError('');
+        // Also load full history with parsed_result if available
+        api
+          .get('/disease/history')
+          .then((res) => {
+            if (active && res.data?.reports) {
+              setDiseaseReports(res.data.reports);
+            }
+          })
+          .catch(() => {});
       })
       .catch(() => active && setError(t('farmerDash.errLoadDashboard')))
       .finally(() => active && setLoading(false));
@@ -713,102 +723,133 @@ export default function FarmerDashboard() {
                   <EmptyState text={t('farmerDash.noReportsYet')} />
                 ) : (
                   <Grid container spacing={2}>
-                    {diseaseReports.map((r) => (
-                    <Grid size={{ xs: 12, md: 6 }} key={r.id}>
-                      <Card variant="outlined">
-                        <Stack direction="row">
-                          {r.image_path && (
-                            <CardMedia
-                              component="img"
-                              image={`${UPLOADS_BASE}/${r.image_path}`}
-                              alt={r.crop_type}
-                              sx={{ width: 110, objectFit: 'cover' }}
-                            />
-                          )}
-                          <CardContent sx={{ flex: 1 }}>
-                            <Stack
-                              direction="row"
-                              justifyContent="space-between"
-                              alignItems="flex-start"
-                            >
-                              <Typography sx={{ fontWeight: 600 }}>{r.crop_type}</Typography>
-                              <Stack direction="row" spacing={0.5} alignItems="center">
-                                <Chip
-                                  size="small"
-                                  label={
-                                    r.status === 'reviewed'
-                                      ? t('farmerDash.statusReviewed')
-                                      : t('farmerDash.statusPending')
-                                  }
-                                  color={r.status === 'reviewed' ? 'success' : 'warning'}
-                                  sx={{ fontFamily: BILINGUAL_FONT }}
-                                />
-                                <Tooltip title={t('farmerDash.deleteReport') || 'Delete report'}>
-                                  <IconButton
-                                    size="small"
-                                    color="error"
-                                    onClick={() => setDeleteReportId(r.id)}
-                                  >
-                                    <DeleteOutlineIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </Stack>
-                            </Stack>
-                            <Typography
-                              variant="subtitle2"
-                              sx={{
-                                fontWeight: 700,
-                                color: 'error.main',
-                                mt: 0.5,
-                                fontFamily: BILINGUAL_FONT,
-                              }}
-                            >
-                              {r.disease_name || t('farmerDash.unknownDisease')}
-                            </Typography>
-                            <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
-                              {r.confidence_level && (
-                                <Chip
-                                  size="small"
-                                  label={confidenceLabel(r.confidence_level)}
-                                  color={CONFIDENCE_COLOR[r.confidence_level] || 'default'}
-                                  sx={{ fontFamily: BILINGUAL_FONT }}
+                    {diseaseReports.map((r) => {
+                      const parsed = r.parsed_result || (() => {
+                        try {
+                          return r.full_result ? JSON.parse(r.full_result) : null;
+                        } catch {
+                          return null;
+                        }
+                      })();
+                      const dangerLevel = parsed?.danger_level || 'Medium';
+                      const recoveryChance =
+                        parsed?.recovery_chance?.level ||
+                        parsed?.recovery_chance ||
+                        (r.confidence_level === 'High' ? 'Good' : 'Fair');
+                      const firstSymptom =
+                        parsed?.visible_symptoms?.en?.[0] ||
+                        (r.symptoms ? r.symptoms.split(/[,.\n]+/)[0]?.trim() : '') ||
+                        'No symptom preview available';
+
+                      const DANGER_COLOR = { High: 'error', Medium: 'warning', Low: 'success' };
+                      const RECOVERY_COLOR = { Good: 'success', Fair: 'warning', Poor: 'error' };
+
+                      return (
+                        <Grid size={{ xs: 12, md: 6 }} key={r.id}>
+                          <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <Stack direction="row" sx={{ flex: 1 }}>
+                              {(r.image_url || r.image_path) && (
+                                <CardMedia
+                                  component="img"
+                                  image={r.image_url || `${UPLOADS_BASE}/${r.image_path}`}
+                                  alt={r.crop_type}
+                                  sx={{ width: 120, objectFit: 'cover' }}
                                 />
                               )}
-                              <Chip size="small" variant="outlined" label={r.district} />
+                              <CardContent sx={{ flex: 1, p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                <Box>
+                                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                                    <Typography
+                                      variant="subtitle1"
+                                      sx={{ fontWeight: 700, color: 'text.primary', lineHeight: 1.3 }}
+                                    >
+                                      {r.disease_name || parsed?.disease_name_en || t('farmerDash.unknownDisease')}
+                                    </Typography>
+                                    <Tooltip title={t('farmerDash.deleteReport') || 'Delete report'}>
+                                      <IconButton
+                                        size="small"
+                                        color="error"
+                                        onClick={() => setDeleteReportId(r.id)}
+                                        sx={{ p: 0.5, ml: 0.5 }}
+                                      >
+                                        <DeleteOutlineIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </Stack>
+
+                                  {/* Danger level badge & Recovery chance badge */}
+                                  <Stack direction="row" spacing={1} sx={{ mt: 1, mb: 1 }} flexWrap="wrap" useFlexGap>
+                                    <Chip
+                                      size="small"
+                                      label={`Danger: ${dangerLevel}`}
+                                      color={DANGER_COLOR[dangerLevel] || 'default'}
+                                      sx={{ fontWeight: 600, fontSize: '0.72rem' }}
+                                    />
+                                    <Chip
+                                      size="small"
+                                      label={`Recovery: ${recoveryChance}`}
+                                      color={RECOVERY_COLOR[recoveryChance] || 'default'}
+                                      sx={{ fontWeight: 600, fontSize: '0.72rem' }}
+                                    />
+                                  </Stack>
+
+                                  {/* First symptom preview */}
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden',
+                                      fontStyle: 'italic',
+                                      fontSize: '0.8rem',
+                                      lineHeight: 1.3,
+                                      mb: 1,
+                                    }}
+                                  >
+                                    "{firstSymptom}"
+                                  </Typography>
+                                </Box>
+
+                                <Box sx={{ mt: 1 }}>
+                                  <Stack
+                                    direction="row"
+                                    justifyContent="space-between"
+                                    alignItems="center"
+                                  >
+                                    <Typography variant="caption" color="text.secondary">
+                                      {formatDate(r.created_at)}
+                                    </Typography>
+                                    <Stack direction="row" spacing={0.5}>
+                                      <Button
+                                        size="small"
+                                        variant="contained"
+                                        color="primary"
+                                        startIcon={<VisibilityIcon fontSize="small" />}
+                                        onClick={() => openReport(r.id)}
+                                        sx={{ fontFamily: BILINGUAL_FONT, fontSize: '0.75rem', py: 0.25, px: 1 }}
+                                      >
+                                        View Full Report
+                                      </Button>
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        startIcon={<ShareIcon fontSize="small" />}
+                                        onClick={() => openShare(r.id)}
+                                        sx={{ fontFamily: BILINGUAL_FONT, fontSize: '0.75rem', py: 0.25, px: 0.75 }}
+                                      >
+                                        {t('farmerDash.share')}
+                                      </Button>
+                                    </Stack>
+                                  </Stack>
+                                </Box>
+                              </CardContent>
                             </Stack>
-                            <Stack
-                              direction="row"
-                              justifyContent="space-between"
-                              alignItems="center"
-                              sx={{ mt: 1.5 }}
-                            >
-                              <Typography variant="caption" color="text.secondary">
-                                {formatDate(r.created_at)}
-                              </Typography>
-                              <Stack direction="row" spacing={0.5}>
-                                <Button
-                                  size="small"
-                                  startIcon={<VisibilityIcon />}
-                                  onClick={() => openReport(r.id)}
-                                  sx={{ fontFamily: BILINGUAL_FONT }}
-                                >
-                                  {t('farmerDash.view')}
-                                </Button>
-                                <Button
-                                  size="small"
-                                  startIcon={<ShareIcon />}
-                                  onClick={() => openShare(r.id)}
-                                  sx={{ fontFamily: BILINGUAL_FONT }}
-                                >
-                                  {t('farmerDash.share')}
-                                </Button>
-                              </Stack>
-                            </Stack>
-                          </CardContent>
-                        </Stack>
-                        </Card>
-                      </Grid>
-                    ))}
+                          </Card>
+                        </Grid>
+                      );
+                    })}
                   </Grid>
                 )}
               </>
@@ -980,94 +1021,38 @@ export default function FarmerDashboard() {
         open={reportOpen}
         onClose={() => setReportOpen(false)}
         fullWidth
-        maxWidth="sm"
+        maxWidth="md"
       >
-        <DialogTitle sx={{ fontFamily: BILINGUAL_FONT }}>
-          {t('farmerDash.reportTitle')}
+        <DialogTitle sx={{ fontFamily: BILINGUAL_FONT, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{t('farmerDash.reportTitle') || 'Disease Diagnosis Report'}</span>
+          <Button size="small" onClick={() => setReportOpen(false)} sx={{ fontFamily: BILINGUAL_FONT }}>
+            {t('farmerDash.close')}
+          </Button>
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}>
           {reportLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
+            <DiseaseResultCard loading={true} />
           ) : reportError ? (
             <Alert severity="error">{reportError}</Alert>
           ) : report ? (
-            <Box>
-              {report.image_url && (
-                <Box
-                  component="img"
-                  src={report.image_url}
-                  alt={report.crop_type}
-                  sx={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 1, mb: 2 }}
-                />
-              )}
-              <Typography
-                variant="h6"
-                align="center"
-                sx={{
-                  fontWeight: 700,
-                  fontFamily: BILINGUAL_FONT,
-                  color: diseaseFound ? 'error.main' : 'success.main',
-                }}
-              >
-                {report.disease_name}
-              </Typography>
-              <Stack direction="row" spacing={1} justifyContent="center" sx={{ my: 1.5 }}>
-                {report.confidence_level && (
-                  <Chip
-                    label={confidenceLabel(report.confidence_level)}
-                    color={CONFIDENCE_COLOR[report.confidence_level] || 'default'}
-                    sx={{ fontFamily: BILINGUAL_FONT }}
-                  />
-                )}
-                <Chip variant="outlined" label={`${report.crop_type} · ${report.district}`} />
-                <Chip
-                  size="small"
-                  label={
-                    report.status === 'reviewed'
-                      ? t('farmerDash.statusReviewed')
-                      : t('farmerDash.statusPending')
-                  }
-                  color={report.status === 'reviewed' ? 'success' : 'warning'}
-                  sx={{ fontFamily: BILINGUAL_FONT }}
-                />
-              </Stack>
-
-              <Divider sx={{ my: 1 }} />
-
-              {report.symptoms && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    gutterBottom
-                    sx={{ fontFamily: BILINGUAL_FONT }}
-                  >
-                    {t('farmerDash.symptoms')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontFamily: BILINGUAL_FONT }}>
-                    {report.symptoms}
-                  </Typography>
-                </Box>
-              )}
-
-              <Tabs
-                value={reportLang}
-                onChange={(_, v) => setReportLang(v)}
-                centered
-                sx={{ mb: 1 }}
-              >
-                <Tab label="English" />
-                <Tab label="සිංහල" sx={{ fontFamily: BILINGUAL_FONT }} />
-              </Tabs>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                {reportLang === 0 ? 'Treatment' : 'ප්‍රතිකාරය'}
-              </Typography>
-              <Typography variant="body2" sx={{ fontFamily: BILINGUAL_FONT }}>
-                {reportLang === 0 ? report.treatment_en : report.treatment_si}
-              </Typography>
-            </Box>
+            <DiseaseResultCard
+              aiResult={report.parsed_result || report}
+              mlResult={
+                report.ml_prediction
+                  ? {
+                      className: report.ml_prediction,
+                      confidence: report.ml_confidence,
+                      classIndex: report.ml_class_index,
+                    }
+                  : null
+              }
+              imageUrl={report.image_url || (report.image_path ? `${UPLOADS_BASE}/${report.image_path}` : null)}
+              onShare={() => {
+                setReportOpen(false);
+                openShare(report.id);
+              }}
+              showActions={true}
+            />
           ) : null}
         </DialogContent>
         <DialogActions>

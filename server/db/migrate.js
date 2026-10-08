@@ -65,6 +65,13 @@ async function migrate() {
       "`ml_class_index` INT NULL COMMENT 'Numeric class index from ML model output' AFTER ml_confidence"
     );
 
+    // Full structured AI diagnosis JSON output.
+    await addColumnIfMissing(
+      'disease_reports',
+      'full_result',
+      "`full_result` TEXT NULL COMMENT 'Complete structured AI diagnosis JSON' AFTER treatment_si"
+    );
+
     // Officer certification fields (added for the officer verification flow).
     await addColumnIfMissing(
       'users',

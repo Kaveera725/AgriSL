@@ -41,7 +41,8 @@ async function classifyDisease(imagePath, mimetype, cropType) {
       isHealthy,
       probability: typeof d.confidence === 'number' ? d.confidence : null,
       classIndex: null,
-      top_3: d.top_3 || [],
+      class_name: d.class_name,
+      className: d.class_name,
       raw_class_name: d.raw_class_name,
       raw_confidence: d.raw_confidence,
     };
