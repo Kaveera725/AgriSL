@@ -4,13 +4,13 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   LinearProgress,
   Stack,
   Typography,
 } from '@mui/material';
 import BiotechIcon from '@mui/icons-material/Biotech';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CircularProgress from '@mui/material/CircularProgress';
 import RadianceIcon from '@mui/icons-material/AutoAwesome';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import SpaIcon from '@mui/icons-material/Spa';
@@ -57,23 +57,22 @@ export default function ImageScannerView({
 
   return (
     <Card
-      elevation={4}
+      elevation={3}
       sx={{
         borderRadius: 3,
         overflow: 'hidden',
         border: '1px solid',
-        borderColor: 'success.light',
-        boxShadow: '0 8px 32px rgba(46, 125, 50, 0.12)',
+        borderColor: 'primary.light',
         bgcolor: '#ffffff',
       }}
     >
-      {/* Top Banner Status */}
+      {/* Top Banner Status — AgriSL Brand Primary Green */}
       <Box
         sx={{
-          bgcolor: 'success.dark',
+          bgcolor: 'primary.main',
           color: '#ffffff',
           px: { xs: 2, sm: 3 },
-          py: 1.5,
+          py: 1.75,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -81,11 +80,11 @@ export default function ImageScannerView({
           gap: 1,
         }}
       >
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <BiotechIcon sx={{ fontSize: 24, animation: 'pulse 1.5s infinite' }} />
+        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+          <BiotechIcon sx={{ fontSize: 24 }} />
           <Typography
             variant="subtitle1"
-            sx={{ fontWeight: 700, fontFamily: BILINGUAL_FONT, letterSpacing: '0.02em' }}
+            sx={{ fontWeight: 700, fontFamily: BILINGUAL_FONT, letterSpacing: '0.01em' }}
           >
             AI Image Recognition Active / පරීක්ෂණ ක්‍රියාවලිය ක්‍රියාත්මකයි
           </Typography>
@@ -95,7 +94,7 @@ export default function ImageScannerView({
           label="Neural Scanner"
           size="small"
           sx={{
-            bgcolor: 'rgba(255, 255, 255, 0.2)',
+            bgcolor: 'rgba(255, 255, 255, 0.22)',
             color: '#ffffff',
             fontWeight: 600,
             backdropFilter: 'blur(4px)',
@@ -114,7 +113,10 @@ export default function ImageScannerView({
         }}
       >
         <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
-          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}>
+          <Typography
+            variant="caption"
+            sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}
+          >
             Target:
           </Typography>
           {cropType && (
@@ -139,8 +141,8 @@ export default function ImageScannerView({
           <Chip
             label="35-Class Model"
             size="small"
-            color="success"
-            sx={{ fontWeight: 600, ml: 'auto' }}
+            color="secondary"
+            sx={{ fontWeight: 700, ml: 'auto' }}
           />
         </Stack>
       </Box>
@@ -149,7 +151,7 @@ export default function ImageScannerView({
       <Box
         sx={{
           position: 'relative',
-          bgcolor: '#0a160d',
+          bgcolor: '#132516',
           minHeight: 280,
           maxHeight: 380,
           display: 'flex',
@@ -169,17 +171,17 @@ export default function ImageScannerView({
               maxWidth: '100%',
               borderRadius: 2,
               objectFit: 'contain',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
             }}
           />
         ) : (
           <Box sx={{ py: 8, color: 'grey.400', textAlign: 'center' }}>
-            <SpaIcon sx={{ fontSize: 60, opacity: 0.5, mb: 1 }} />
+            <SpaIcon sx={{ fontSize: 60, opacity: 0.5, mb: 1, color: 'primary.light' }} />
             <Typography variant="body2">Processing image buffer...</Typography>
           </Box>
         )}
 
-        {/* Reticle Corner Brackets */}
+        {/* Reticle Corner Brackets in Theme Primary Light (#4caf50) */}
         <Box
           sx={{
             position: 'absolute',
@@ -188,9 +190,9 @@ export default function ImageScannerView({
             '&::before, &::after': {
               content: '""',
               position: 'absolute',
-              width: 28,
-              height: 28,
-              borderColor: '#00e676',
+              width: 26,
+              height: 26,
+              borderColor: '#4caf50',
             },
             '&::before': {
               top: 0,
@@ -212,10 +214,10 @@ export default function ImageScannerView({
               position: 'absolute',
               bottom: 0,
               left: 0,
-              width: 28,
-              height: 28,
-              borderBottom: '3px solid #00e676',
-              borderLeft: '3px solid #00e676',
+              width: 26,
+              height: 26,
+              borderBottom: '3px solid #4caf50',
+              borderLeft: '3px solid #4caf50',
             }}
           />
           <Box
@@ -223,23 +225,23 @@ export default function ImageScannerView({
               position: 'absolute',
               bottom: 0,
               right: 0,
-              width: 28,
-              height: 28,
-              borderBottom: '3px solid #00e676',
-              borderRight: '3px solid #00e676',
+              width: 26,
+              height: 26,
+              borderBottom: '3px solid #4caf50',
+              borderRight: '3px solid #4caf50',
             }}
           />
         </Box>
 
-        {/* Sweeping Laser Scan Line */}
+        {/* Sweeping Laser Scan Line in Theme Green */}
         <Box
           sx={{
             position: 'absolute',
             left: 16,
             right: 16,
-            height: '4px',
-            background: 'linear-gradient(90deg, rgba(0,230,118,0) 0%, #00e676 50%, rgba(0,230,118,0) 100%)',
-            boxShadow: '0 0 16px 4px rgba(0, 230, 118, 0.75)',
+            height: '3px',
+            background: 'linear-gradient(90deg, rgba(76,175,80,0) 0%, #4caf50 50%, rgba(76,175,80,0) 100%)',
+            boxShadow: '0 0 14px 3px rgba(76, 175, 80, 0.65)',
             animation: 'scannerSweep 2.2s ease-in-out infinite',
             pointerEvents: 'none',
             zIndex: 2,
@@ -251,9 +253,9 @@ export default function ImageScannerView({
           sx={{
             position: 'absolute',
             bottom: 24,
-            bgcolor: 'rgba(10, 22, 13, 0.85)',
-            color: '#00e676',
-            border: '1px solid rgba(0, 230, 118, 0.4)',
+            bgcolor: 'rgba(19, 37, 22, 0.88)',
+            color: '#a5d6a7',
+            border: '1px solid rgba(76, 175, 80, 0.4)',
             borderRadius: 5,
             px: 2,
             py: 0.5,
@@ -264,24 +266,24 @@ export default function ImageScannerView({
             zIndex: 3,
           }}
         >
-          <CircularProgress size={14} thickness={6} sx={{ color: '#00e676' }} />
+          <CircularProgress size={14} thickness={6} sx={{ color: '#81c784' }} />
           <Typography
             variant="caption"
-            sx={{ fontWeight: 600, letterSpacing: '0.03em', fontFamily: BILINGUAL_FONT }}
+            sx={{ fontWeight: 600, letterSpacing: '0.02em', fontFamily: BILINGUAL_FONT }}
           >
             Foliage Scanner Active / පටක සහ පැල්ලම් විශ්ලේෂණය...
           </Typography>
         </Box>
       </Box>
 
-      {/* Progress Bar */}
+      {/* Progress Bar — Theme Primary Gradient */}
       <LinearProgress
-        color="success"
+        color="primary"
         sx={{
-          height: 6,
-          bgcolor: 'success.light',
+          height: 5,
+          bgcolor: 'rgba(46, 125, 50, 0.15)',
           '& .MuiLinearProgress-bar': {
-            background: 'linear-gradient(90deg, #2e7d32 0%, #00e676 50%, #43a047 100%)',
+            background: 'linear-gradient(90deg, #1b5e20 0%, #2E7D32 50%, #4caf50 100%)',
           },
         }}
       />
@@ -292,10 +294,11 @@ export default function ImageScannerView({
           variant="subtitle2"
           sx={{
             fontWeight: 700,
-            color: 'text.secondary',
+            color: 'primary.main',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
             mb: 2,
+            fontFamily: BILINGUAL_FONT,
           }}
         >
           Diagnostic Progress / රෝග විනිශ්චය පියවර
@@ -315,17 +318,17 @@ export default function ImageScannerView({
                   gap: 1.5,
                   p: 1.5,
                   borderRadius: 2,
-                  bgcolor: isCurrent ? 'success.50' : 'transparent',
-                  border: isCurrent ? '1px solid' : '1px solid transparent',
-                  borderColor: isCurrent ? 'success.light' : 'transparent',
+                  bgcolor: isCurrent ? 'rgba(46, 125, 50, 0.06)' : 'transparent',
+                  border: '1px solid',
+                  borderColor: isCurrent ? 'primary.light' : 'transparent',
                   transition: 'all 0.3s ease',
                 }}
               >
                 <Box sx={{ mt: 0.25 }}>
                   {isCompleted ? (
-                    <CheckCircleIcon sx={{ color: 'success.main', fontSize: 22 }} />
+                    <CheckCircleIcon sx={{ color: 'primary.main', fontSize: 22 }} />
                   ) : isCurrent ? (
-                    <CircularProgress size={20} color="success" thickness={5} />
+                    <CircularProgress size={20} color="primary" thickness={5} />
                   ) : (
                     <Box
                       sx={{
@@ -343,7 +346,7 @@ export default function ImageScannerView({
                     variant="body2"
                     sx={{
                       fontWeight: isCurrent ? 700 : isCompleted ? 600 : 500,
-                      color: isCurrent ? 'success.dark' : isCompleted ? 'text.primary' : 'text.disabled',
+                      color: isCurrent ? 'primary.main' : isCompleted ? 'text.primary' : 'text.disabled',
                       fontFamily: BILINGUAL_FONT,
                     }}
                   >
@@ -351,7 +354,11 @@ export default function ImageScannerView({
                     <Typography
                       component="span"
                       variant="caption"
-                      sx={{ display: 'block', color: isCurrent ? 'success.main' : 'text.secondary', fontWeight: 500 }}
+                      sx={{
+                        display: 'block',
+                        color: isCurrent ? 'primary.dark' : 'text.secondary',
+                        fontWeight: 500,
+                      }}
                     >
                       {stg.titleSi}
                     </Typography>
@@ -377,7 +384,7 @@ export default function ImageScannerView({
             borderRadius: 2,
             bgcolor: 'grey.50',
             border: '1px dashed',
-            borderColor: 'grey.300',
+            borderColor: 'divider',
             textAlign: 'center',
           }}
         >

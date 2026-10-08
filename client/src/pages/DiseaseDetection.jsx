@@ -235,13 +235,13 @@ export default function DiseaseDetection() {
             spacing={1.5}
             sx={{ justifyContent: 'center', alignItems: 'center', mb: 1 }}
           >
-            <LocalFloristIcon sx={{ color: 'success.main', fontSize: { xs: 28, sm: 36 } }} />
+            <LocalFloristIcon sx={{ color: 'primary.main', fontSize: { xs: 28, sm: 36 } }} />
             <Typography
               variant="h4"
               component="h1"
               sx={{
-                fontWeight: 800,
-                color: 'primary.dark',
+                fontWeight: 700,
+                color: 'primary.main',
                 fontFamily: BILINGUAL_FONT,
                 letterSpacing: '-0.02em',
                 fontSize: { xs: '1.35rem', sm: '1.9rem' },
@@ -302,7 +302,7 @@ export default function DiseaseDetection() {
                 label={`${cropType || ''}${district ? ` • ${district}` : ''}`}
                 size="small"
                 variant="filled"
-                color="success"
+                color="primary"
                 sx={{ fontFamily: BILINGUAL_FONT, fontWeight: 600 }}
               />
             </Stack>
@@ -391,7 +391,7 @@ export default function DiseaseDetection() {
                   variant="h6"
                   sx={{
                     fontWeight: 700,
-                    color: 'text.primary',
+                    color: 'primary.main',
                     mb: 2,
                     fontFamily: BILINGUAL_FONT,
                     display: 'flex',
@@ -399,7 +399,7 @@ export default function DiseaseDetection() {
                     gap: 1,
                   }}
                 >
-                  <LocalFloristIcon color="success" />
+                  <LocalFloristIcon color="primary" />
                   Select Crop & Upload Leaf Photo / බෝගය සහ ඡායාරූපය තෝරන්න
                 </Typography>
 
@@ -449,14 +449,14 @@ export default function DiseaseDetection() {
                     sx={{
                       mt: 2,
                       border: '2px dashed',
-                      borderColor: uploadError ? 'error.main' : 'success.light',
+                      borderColor: uploadError ? 'error.main' : 'primary.light',
                       borderRadius: 2,
                       p: 3,
                       textAlign: 'center',
                       cursor: 'pointer',
-                      bgcolor: imagePreview ? 'success.50' : 'action.hover',
+                      bgcolor: imagePreview ? 'rgba(46, 125, 50, 0.04)' : 'action.hover',
                       transition: 'all 0.2s ease',
-                      '&:hover': { bgcolor: 'action.selected', borderColor: 'success.main' },
+                      '&:hover': { bgcolor: 'action.selected', borderColor: 'primary.main' },
                     }}
                   >
                     <input
@@ -501,7 +501,7 @@ export default function DiseaseDetection() {
                       </Box>
                     ) : (
                       <Box>
-                        <UploadFileIcon sx={{ fontSize: 48, color: 'success.main', mb: 1 }} />
+                        <UploadFileIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
                         <Typography
                           variant="body2"
                           sx={{ fontWeight: 600, color: 'text.primary', fontFamily: BILINGUAL_FONT }}

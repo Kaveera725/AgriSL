@@ -256,7 +256,7 @@ export default function DiseaseResultCard({
             variant="h5"
             sx={{
               fontWeight: 800,
-              color: isHealthy ? 'success.main' : 'error.main',
+              color: isHealthy ? 'primary.main' : 'error.main',
               letterSpacing: '-0.02em',
             }}
           >
@@ -265,7 +265,7 @@ export default function DiseaseResultCard({
           <Typography
             variant="h6"
             sx={{
-              color: isHealthy ? 'success.dark' : 'error.dark',
+              color: isHealthy ? 'primary.dark' : 'error.dark',
               fontFamily: BILINGUAL_FONT,
               fontWeight: 600,
               mt: 0.5,
@@ -662,7 +662,7 @@ export default function DiseaseResultCard({
           <Stack spacing={1.5}>
             <Button
               variant="outlined"
-              color="success"
+              color="primary"
               startIcon={<CheckCircleIcon />}
               disabled
               fullWidth
