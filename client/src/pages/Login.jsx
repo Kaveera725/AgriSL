@@ -48,8 +48,9 @@ export default function Login() {
     return Object.keys(errs).length === 0;
   }
 
-  // Submits credentials, stores the JWT via AuthContext, then redirects the user
-  // to the home page for their role (farmer → /dashboard, officer → /officer/dashboard).
+  // Submits credentials, stores both tokens via AuthContext, then redirects the
+  // user to the home page for their role. The AuthContext schedules a silent
+  // refresh 2 minutes before the access token expires so the session stays alive.
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
@@ -58,7 +59,8 @@ export default function Login() {
     setLoading(true);
     try {
       const { data } = await api.post('/auth/login', { email, password });
-      login(data.token);
+      // Pass both tokens + the user object so AuthContext can persist everything
+      login(data.accessToken, data.refreshToken, data.user, data.expiresIn);
       const dest = ROLE_HOME[data.user.role] || '/';
       navigate(dest, { replace: true });
     } catch (err) {
