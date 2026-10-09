@@ -151,3 +151,19 @@ CREATE TABLE IF NOT EXISTS bookmarks (
     REFERENCES advisory_articles(id) ON DELETE CASCADE,
   UNIQUE KEY uq_user_article (user_id, article_id)
 ) ENGINE=InnoDB;
+
+-- Refresh tokens for JWT access/refresh token system
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  token_hash VARCHAR(255) NOT NULL UNIQUE,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  revoked TINYINT DEFAULT 0,
+  revoked_at TIMESTAMP NULL,
+  device_info VARCHAR(255) NULL COMMENT 'Browser/device info for security',
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_token_hash (token_hash),
+  INDEX idx_user_id (user_id),
+  INDEX idx_expires_at (expires_at)
+) ENGINE=InnoDB;

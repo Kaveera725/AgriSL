@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
 const BILINGUAL_FONT = "'Noto Sans Sinhala', Roboto, sans-serif";
@@ -58,6 +59,7 @@ const CERT_ALLOWED = ['image/jpeg', 'image/png', 'application/pdf'];
 
 export default function Register() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const { t } = useLanguage();
 
   const [form, setForm] = useState({
@@ -129,7 +131,8 @@ export default function Register() {
   }
 
   // Registers the user. Officers submit multipart form data (with the document)
-  // and see a pending-approval notice; farmers post and are sent to login.
+  // and see a pending-approval notice. Farmers are auto-approved by the server
+  // and immediately logged in without a second trip to /login.
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
@@ -150,7 +153,7 @@ export default function Register() {
         formData.append('cert_document', certDocument);
       }
 
-      await api.post('/auth/register', formData, {
+      const { data } = await api.post('/auth/register', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
@@ -158,8 +161,9 @@ export default function Register() {
         // Stay on the page with a clear pending-approval message (no redirect).
         setPending(true);
       } else {
-        setSuccess('Registration successful. Redirecting to login...');
-        setTimeout(() => navigate('/login', { replace: true }), 2000);
+        // Farmer: server returned tokens — log them in directly, skip /login
+        login(data.accessToken, data.refreshToken, data.user, data.expiresIn);
+        navigate('/dashboard', { replace: true });
       }
     } catch (err) {
       const data = err.response?.data;

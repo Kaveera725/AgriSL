@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import { Stack } from './muiSystem';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -76,6 +77,20 @@ function formatWhen(ts) {
   });
 }
 
+// Returns minutes remaining on the current access token by decoding its exp claim.
+// Returns 0 if there is no token or it cannot be decoded.
+function getMinutesRemaining() {
+  const token = localStorage.getItem('agrisl_access_token');
+  if (!token) return 0;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const remaining = Math.floor((payload.exp - Date.now() / 1000) / 60);
+    return Math.max(0, remaining);
+  } catch {
+    return 0;
+  }
+}
+
 // True when the current path matches a nav link. '/' must match exactly so it
 // isn't highlighted on every nested route.
 function isActive(pathname, to) {
@@ -93,6 +108,15 @@ export default function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Live session countdown — minutes remaining on the access token.
+  const [sessionMins, setSessionMins] = useState(() => getMinutesRemaining());
+
+  // Update the countdown every 60 seconds so it stays reasonably accurate.
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    const id = setInterval(() => setSessionMins(getMinutesRemaining()), 60000);
+    return () => clearInterval(id);
+  }, [isAuthenticated]);
 
   const links = isAuthenticated ? NAV_LINKS[user?.role] || [] : GUEST_LINKS;
 
@@ -331,12 +355,30 @@ export default function Navbar() {
               >
                 {initials(user?.name)}
               </Avatar>
-              <Typography
-                variant="body2"
-                sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' } }}
-              >
-                {user?.name}
-              </Typography>
+              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.1 }}>
+                  {user?.name}
+                </Typography>
+                {/* Session countdown — turns amber when under 5 minutes */}
+                <Stack direction="row" spacing={0.4} alignItems="center">
+                  <AccessTimeIcon
+                    sx={{
+                      fontSize: 11,
+                      color: sessionMins <= 5 ? 'warning.light' : 'rgba(255,255,255,0.6)',
+                    }}
+                  />
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: '0.68rem',
+                      lineHeight: 1,
+                      color: sessionMins <= 5 ? 'warning.light' : 'rgba(255,255,255,0.7)',
+                    }}
+                  >
+                    Session: {sessionMins} min
+                  </Typography>
+                </Stack>
+              </Box>
               <Button
                 color="inherit"
                 variant="outlined"

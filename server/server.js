@@ -2,11 +2,27 @@ require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// ── Security headers ────────────────────────────────────────────────────────
+// helmet sets sensible HTTP security headers on every response.
+// crossOriginResourcePolicy is relaxed to 'cross-origin' so the React client
+// can load images served from /uploads.
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
+// ── CORS ─────────────────────────────────────────────────────────────────────
+// In development allow the Vite dev server; in production restrict to the
+// deployed frontend URL set via FRONTEND_URL in the server's environment.
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? process.env.FRONTEND_URL
+    : 'http://localhost:5173',
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -38,4 +54,28 @@ if (require.main === module) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Refresh-token housekeeping — delete expired/revoked rows every 24 hours.
+// Keeps the refresh_tokens table small and prevents stale rows accumulating.
+// ---------------------------------------------------------------------------
+const pool = require('./db/db');
+
+const cleanupExpiredTokens = async () => {
+  try {
+    const [result] = await pool.query(
+      `DELETE FROM refresh_tokens WHERE expires_at < NOW() OR revoked = 1`
+    );
+    if (result.affectedRows > 0) {
+      console.log(`Cleaned up ${result.affectedRows} expired/revoked refresh tokens`);
+    }
+  } catch (error) {
+    console.error('Token cleanup error:', error);
+  }
+};
+
+// Run once on startup, then every 24 hours.
+cleanupExpiredTokens();
+setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
+
 module.exports = app;
+
