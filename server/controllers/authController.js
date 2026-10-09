@@ -365,8 +365,30 @@ async function refreshAccessToken(req, res) {
       is_approved: tokenRecord.is_approved,
     });
 
+    // Revoke the old refresh token (rotation — stolen tokens can only be used once)
+    await pool.query(
+      `UPDATE refresh_tokens
+       SET revoked = 1, revoked_at = NOW()
+       WHERE token_hash = ?`,
+      [tokenHash]
+    );
+
+    // Generate new refresh token (rotation)
+    const newRefreshToken = generateRefreshToken();
+    const newTokenHash = hashToken(newRefreshToken);
+    const newExpiresAt = getRefreshTokenExpiry();
+
+    // Store new refresh token
+    await pool.query(
+      `INSERT INTO refresh_tokens
+       (user_id, token_hash, expires_at, device_info)
+       VALUES (?, ?, ?, ?)`,
+      [tokenRecord.uid, newTokenHash, newExpiresAt, tokenRecord.device_info]
+    );
+
     return res.json({
       accessToken: newAccessToken,
+      refreshToken: newRefreshToken,  // send new refresh token to client
       expiresIn: 2700,
     });
   } catch (error) {
@@ -375,4 +397,52 @@ async function refreshAccessToken(req, res) {
   }
 }
 
-module.exports = { register, login, getMe, updateProfile, updateProfilePicture, logout, refreshAccessToken };
+/**
+ * POST /api/auth/logout-all
+ * Revokes ALL active refresh tokens for the authenticated user.
+ * Use this to log out from every device simultaneously.
+ */
+async function logoutAll(req, res) {
+  try {
+    // Revoke ALL refresh tokens for this user
+    await pool.query(
+      `UPDATE refresh_tokens
+       SET revoked = 1, revoked_at = NOW()
+       WHERE user_id = ? AND revoked = 0`,
+      [req.user.id]
+    );
+
+    return res.json({
+      message: 'Logged out from all devices successfully'
+    });
+  } catch (error) {
+    console.error('Logout all error:', error);
+    return res.status(500).json({ message: 'Failed to logout from all devices' });
+  }
+}
+
+/**
+ * GET /api/auth/sessions
+ * Returns a list of active sessions (non-revoked, non-expired refresh tokens)
+ * for the authenticated user — lets them see where they are logged in from.
+ */
+async function getActiveSessions(req, res) {
+  try {
+    const [sessions] = await pool.query(
+      `SELECT id, device_info, created_at, expires_at
+       FROM refresh_tokens
+       WHERE user_id = ?
+         AND revoked = 0
+         AND expires_at > NOW()
+       ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+
+    return res.json({ sessions });
+  } catch (error) {
+    console.error('Get sessions error:', error);
+    return res.status(500).json({ message: 'Failed to get sessions' });
+  }
+}
+
+module.exports = { register, login, getMe, updateProfile, updateProfilePicture, logout, refreshAccessToken, logoutAll, getActiveSessions };
