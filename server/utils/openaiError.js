@@ -46,4 +46,5 @@ function openaiErrorResponse(err, fallback) {
   return { status: 500, message: fallback };
 }
 
+
 module.exports = { openaiErrorResponse };
