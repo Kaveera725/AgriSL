@@ -67,6 +67,7 @@ const getRefreshTokenExpiry = () => {
  * Defaults to 900 seconds (15 minutes).
  * @returns {number}
  */
+
 const getAccessTokenExpiresInSeconds = () => {
   const exp = process.env.JWT_ACCESS_EXPIRES || '15m';
   if (exp.endsWith('m')) return parseInt(exp, 10) * 60;
