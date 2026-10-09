@@ -38,4 +38,28 @@ if (require.main === module) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Refresh-token housekeeping — delete expired/revoked rows every 24 hours.
+// Keeps the refresh_tokens table small and prevents stale rows accumulating.
+// ---------------------------------------------------------------------------
+const pool = require('./db/db');
+
+const cleanupExpiredTokens = async () => {
+  try {
+    const [result] = await pool.query(
+      `DELETE FROM refresh_tokens WHERE expires_at < NOW() OR revoked = 1`
+    );
+    if (result.affectedRows > 0) {
+      console.log(`Cleaned up ${result.affectedRows} expired/revoked refresh tokens`);
+    }
+  } catch (error) {
+    console.error('Token cleanup error:', error);
+  }
+};
+
+// Run once on startup, then every 24 hours.
+cleanupExpiredTokens();
+setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
+
 module.exports = app;
+

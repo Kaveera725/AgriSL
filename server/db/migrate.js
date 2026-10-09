@@ -109,6 +109,25 @@ async function migrate() {
       'profile_picture VARCHAR(255) NULL AFTER is_active'
     );
 
+    // Refresh tokens table for JWT access/refresh token system.
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        token_hash VARCHAR(255) NOT NULL UNIQUE,
+        expires_at DATETIME NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        revoked TINYINT DEFAULT 0,
+        revoked_at TIMESTAMP NULL,
+        device_info VARCHAR(255) NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_token_hash (token_hash),
+        INDEX idx_user_id (user_id),
+        INDEX idx_expires_at (expires_at)
+      )
+    `);
+    console.log('refresh_tokens table created');
+
     // Seed users (idempotent — skip if the email already exists).
     const users = [
       { name: 'Admin', email: 'admin@agrisl.lk', password: 'admin123', role: 'admin', district: 'Colombo', is_approved: 1 },

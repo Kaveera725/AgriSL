@@ -1,9 +1,13 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const pool = require('../db/db');
+const {
+  generateAccessToken,
+  generateRefreshToken,
+  hashToken,
+  getRefreshTokenExpiry,
+} = require('../utils/tokenUtils');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const TOKEN_EXPIRY = '7d';
 
 // Shape the public user object returned to clients (never expose password_hash).
 function publicUser(u) {
@@ -102,11 +106,31 @@ async function register(req, res) {
       profile_picture: null,
     };
 
+    // Auto-login: generate access + refresh tokens so the client is immediately
+    // authenticated after registration (officer tokens still work, but officer
+    // routes will block until is_approved = 1).
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken();
+    const tokenHash = hashToken(refreshToken);
+    const expiresAt = getRefreshTokenExpiry();
+    const deviceInfo = req.headers['user-agent']
+      ? req.headers['user-agent'].substring(0, 255)
+      : 'Unknown';
+
+    await pool.query(
+      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, device_info)
+       VALUES (?, ?, ?, ?)`,
+      [user.id, tokenHash, expiresAt, deviceInfo]
+    );
+
     return res.status(201).json({
       message:
         role === 'officer'
           ? 'Registration successful. Your officer account is pending admin approval.'
           : 'Registration successful',
+      accessToken,
+      refreshToken,
+      expiresIn: 2700,
       user: publicUser(user),
     });
   } catch (err) {
@@ -155,21 +179,30 @@ async function login(req, res) {
       return res.status(403).json({ message: 'Your account is pending admin approval.' });
     }
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name,
-        district: user.district,
-        is_approved: user.is_approved,
-        profile_picture: user.profile_picture,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: TOKEN_EXPIRY }
+    // Generate access + refresh tokens.
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken();
+    const tokenHash = hashToken(refreshToken);
+    const expiresAt = getRefreshTokenExpiry();
+
+    // Capture device info for security tracking.
+    const deviceInfo = req.headers['user-agent']
+      ? req.headers['user-agent'].substring(0, 255)
+      : 'Unknown';
+
+    // Persist hashed refresh token — never store the raw token.
+    await pool.query(
+      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, device_info)
+       VALUES (?, ?, ?, ?)`,
+      [user.id, tokenHash, expiresAt, deviceInfo]
     );
 
-    return res.json({ token, user: publicUser(user) });
+    return res.json({
+      accessToken,
+      refreshToken,
+      expiresIn: 2700, // 45 minutes in seconds
+      user: publicUser(user),
+    });
   } catch (err) {
     console.error('login error:', err.message);
     return res.status(500).json({ message: 'Server error' });
@@ -206,19 +239,8 @@ async function updateProfile(req, res) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name,
-        district: user.district,
-        is_approved: user.is_approved,
-        profile_picture: user.profile_picture,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: TOKEN_EXPIRY }
-    );
+    // Return a fresh access token reflecting the updated name/district.
+    const token = generateAccessToken(user);
 
     return res.json({ token, user: publicUser(user) });
   } catch (err) {
@@ -246,19 +268,8 @@ async function updateProfilePicture(req, res) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name,
-        district: user.district,
-        is_approved: user.is_approved,
-        profile_picture: user.profile_picture,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: TOKEN_EXPIRY }
-    );
+    // Return a fresh access token reflecting the updated profile picture.
+    const token = generateAccessToken(user);
 
     return res.json({ token, user: publicUser(user) });
   } catch (err) {
@@ -267,4 +278,101 @@ async function updateProfilePicture(req, res) {
   }
 }
 
-module.exports = { register, login, getMe, updateProfile, updateProfilePicture };
+/**
+ * POST /api/auth/logout
+ * Revokes the supplied refresh token so it can no longer be used to obtain
+ * new access tokens. The client should also discard its local tokens.
+ */
+async function logout(req, res) {
+  try {
+    const { refreshToken } = req.body;
+
+    if (refreshToken) {
+      const tokenHash = hashToken(refreshToken);
+      await pool.query(
+        `UPDATE refresh_tokens
+         SET revoked = 1, revoked_at = NOW()
+         WHERE token_hash = ? AND user_id = ?`,
+        [tokenHash, req.user.id]
+      );
+    }
+
+    return res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('logout error:', error);
+    return res.status(500).json({ message: 'Logout failed' });
+  }
+}
+
+/**
+ * POST /api/auth/refresh
+ * Validates the refresh token and issues a new access token.
+ * No auth middleware — the refresh token IS the credential here.
+ */
+async function refreshAccessToken(req, res) {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        message: 'Refresh token required',
+        code: 'NO_REFRESH_TOKEN',
+      });
+    }
+
+    const tokenHash = hashToken(refreshToken);
+
+    // Join with users so we can build the new access token payload without a
+    // second query.
+    const [tokens] = await pool.query(
+      `SELECT rt.*, u.id AS uid, u.name, u.email, u.role,
+              u.district, u.is_approved
+       FROM refresh_tokens rt
+       JOIN users u ON rt.user_id = u.id
+       WHERE rt.token_hash = ?`,
+      [tokenHash]
+    );
+
+    if (tokens.length === 0) {
+      return res.status(401).json({
+        message: 'Invalid refresh token',
+        code: 'INVALID_REFRESH_TOKEN',
+      });
+    }
+
+    const tokenRecord = tokens[0];
+
+    if (tokenRecord.revoked) {
+      return res.status(401).json({
+        message: 'Refresh token has been revoked',
+        code: 'TOKEN_REVOKED',
+      });
+    }
+
+    if (new Date(tokenRecord.expires_at) < new Date()) {
+      return res.status(401).json({
+        message: 'Refresh token expired, please login again',
+        code: 'REFRESH_TOKEN_EXPIRED',
+      });
+    }
+
+    const newAccessToken = generateAccessToken({
+      id: tokenRecord.uid,
+      email: tokenRecord.email,
+      role: tokenRecord.role,
+      name: tokenRecord.name,
+      district: tokenRecord.district,
+      is_approved: tokenRecord.is_approved,
+    });
+
+    return res.json({
+      accessToken: newAccessToken,
+      expiresIn: 2700,
+    });
+  } catch (error) {
+    console.error('refreshAccessToken error:', error);
+    return res.status(500).json({ message: 'Token refresh failed' });
+  }
+}
+
+module.exports = { register, login, getMe, updateProfile, updateProfilePicture, logout, refreshAccessToken };

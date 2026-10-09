@@ -1,7 +1,7 @@
 const path = require('path');
 const express = require('express');
 const router = express.Router();
-const { register, login, getMe, updateProfile, updateProfilePicture } = require('../controllers/authController');
+const { register, login, getMe, updateProfile, updateProfilePicture, logout, refreshAccessToken } = require('../controllers/authController');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { uploadCert, CERT_DIR } = require('../middleware/certUpload');
 const { uploadImage } = require('../middleware/upload');
@@ -14,6 +14,12 @@ router.post('/login', login);
 router.get('/me', requireAuth, getMe);
 router.put('/profile', requireAuth, updateProfile);
 router.post('/profile-picture', requireAuth, uploadImage, updateProfilePicture);
+
+// Revoke a refresh token on logout (access token required to bind it to the user).
+router.post('/logout', requireAuth, logout);
+
+// Issue a new access token using a valid refresh token — no access token needed.
+router.post('/refresh', refreshAccessToken);
 
 // Serve an officer's certification document — admins only (never public).
 router.get('/cert/:filename', requireAdmin, (req, res) => {
