@@ -5,6 +5,7 @@ const {
   generateRefreshToken,
   hashToken,
   getRefreshTokenExpiry,
+  getAccessTokenExpiresInSeconds,
 } = require('../utils/tokenUtils');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -130,7 +131,7 @@ async function register(req, res) {
           : 'Registration successful',
       accessToken,
       refreshToken,
-      expiresIn: 2700,
+      expiresIn: getAccessTokenExpiresInSeconds(),
       user: publicUser(user),
     });
   } catch (err) {
@@ -200,7 +201,7 @@ async function login(req, res) {
     return res.json({
       accessToken,
       refreshToken,
-      expiresIn: 2700, // 45 minutes in seconds
+      expiresIn: getAccessTokenExpiresInSeconds(), // 15 minutes in seconds
       user: publicUser(user),
     });
   } catch (err) {
@@ -389,7 +390,7 @@ async function refreshAccessToken(req, res) {
     return res.json({
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,  // send new refresh token to client
-      expiresIn: 2700,
+      expiresIn: getAccessTokenExpiresInSeconds(),
     });
   } catch (error) {
     console.error('refreshAccessToken error:', error);

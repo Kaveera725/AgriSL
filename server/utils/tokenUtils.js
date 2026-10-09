@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
 /**
- * Generate a short-lived (45 min) JWT access token.
+ * Generate a short-lived (15 min) JWT access token.
  * Payload includes everything the middleware needs so it never has to hit the DB.
  * @param {object} user - Row from the users table (or equivalent plain object)
  * @returns {string} Signed JWT
@@ -19,7 +19,7 @@ const generateAccessToken = (user) => {
       type: 'access',
     },
     process.env.JWT_ACCESS_SECRET,
-    { expiresIn: process.env.JWT_ACCESS_EXPIRES || '45m' }
+    { expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m' }
   );
 };
 
@@ -62,10 +62,26 @@ const getRefreshTokenExpiry = () => {
   return date;
 };
 
+/**
+ * Return the access token expiry duration in seconds matching JWT_ACCESS_EXPIRES.
+ * Defaults to 900 seconds (15 minutes).
+ * @returns {number}
+ */
+const getAccessTokenExpiresInSeconds = () => {
+  const exp = process.env.JWT_ACCESS_EXPIRES || '15m';
+  if (exp.endsWith('m')) return parseInt(exp, 10) * 60;
+  if (exp.endsWith('h')) return parseInt(exp, 10) * 3600;
+  if (exp.endsWith('s')) return parseInt(exp, 10);
+  if (exp.endsWith('d')) return parseInt(exp, 10) * 86400;
+  const num = parseInt(exp, 10);
+  return Number.isNaN(num) ? 900 : num;
+};
+
 module.exports = {
   generateAccessToken,
   generateRefreshToken,
   hashToken,
   verifyAccessToken,
   getRefreshTokenExpiry,
+  getAccessTokenExpiresInSeconds,
 };

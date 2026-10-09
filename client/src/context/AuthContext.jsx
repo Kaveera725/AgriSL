@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
   // ── silent token refresh ─────────────────────────────────────────────────────
   // Schedules a background refresh 2 minutes before the access token expires.
   // The farmer never sees an expiry error — the new token is swapped in silently.
-  const scheduleTokenRefresh = useCallback((expiresInSeconds = 2700) => {
+  const scheduleTokenRefresh = useCallback((expiresInSeconds = 900) => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
 
     // Refresh 2 minutes (120 s) before expiry
@@ -77,7 +77,7 @@ export function AuthProvider({ children }) {
       }
 
       // Schedule the next silent refresh
-      scheduleTokenRefresh(expiresIn || 2700);
+      scheduleTokenRefresh(expiresIn || 900);
 
     } catch {
       // Refresh token expired or revoked — force the user to log in again
@@ -132,7 +132,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // ── public API ───────────────────────────────────────────────────────────────
-  const login = useCallback((accessToken, refreshToken, userData, expiresIn = 2700) => {
+  const login = useCallback((accessToken, refreshToken, userData, expiresIn = 900) => {
     saveTokens(accessToken, refreshToken, userData);
     scheduleTokenRefresh(expiresIn);
   }, [saveTokens, scheduleTokenRefresh]);
