@@ -41,6 +41,7 @@ import AgricultureIcon from '@mui/icons-material/Agriculture';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import ChatIcon from '@mui/icons-material/Chat';
+import DevicesIcon from '@mui/icons-material/Devices';
 import EditIcon from '@mui/icons-material/Edit';
 import EmailIcon from '@mui/icons-material/Email';
 import PlaceIcon from '@mui/icons-material/Place';
@@ -49,6 +50,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ShareIcon from '@mui/icons-material/Share';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import LockOpenIcon from '@mui/icons-material/LockOpen';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -148,6 +150,24 @@ export default function FarmerDashboard() {
   const [deleteReportId, setDeleteReportId] = useState(null);
   const [deletingReport, setDeletingReport] = useState(false);
 
+  // Active sessions (for security panel)
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [logoutAllLoading, setLogoutAllLoading] = useState(false);
+
+  // Fetch active sessions from the server.
+  async function fetchSessions() {
+    setSessionsLoading(true);
+    try {
+      const { data } = await api.get('/auth/sessions');
+      setSessions(data.sessions || []);
+    } catch {
+      // silently ignore — sessions panel is non-critical
+    } finally {
+      setSessionsLoading(false);
+    }
+  }
+
   useEffect(() => {
     let active = true;
     api
@@ -173,6 +193,8 @@ export default function FarmerDashboard() {
       })
       .catch(() => active && setError(t('farmerDash.errLoadDashboard')))
       .finally(() => active && setLoading(false));
+    // Load sessions in parallel (non-blocking)
+    fetchSessions();
     return () => {
       active = false;
     };
@@ -229,6 +251,21 @@ export default function FarmerDashboard() {
     }
   }
 
+  // Revoke all refresh tokens except the current one, then refresh session list.
+  async function logoutAllDevices() {
+    setLogoutAllLoading(true);
+    try {
+      await api.post('/auth/logout-all');
+      setToast('Logged out from all other devices successfully');
+      // Re-fetch sessions so the list reflects only the current session
+      await fetchSessions();
+    } catch {
+      setToast('Could not logout other devices. Please try again.');
+    } finally {
+      setLogoutAllLoading(false);
+    }
+  }
+
   async function handleProfilePicChange(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -240,8 +277,6 @@ export default function FarmerDashboard() {
       const { data } = await api.post('/auth/profile-picture', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      localStorage.setItem('agrisl_token', data.token);
-      login(data.token);
       setProfile(data.user);
     } catch (err) {
       setError(err.response?.data?.message || 'Could not update profile picture');
@@ -501,6 +536,83 @@ export default function FarmerDashboard() {
                     {t('farmerDash.editProfile')}
                   </Button>
                 </Stack>
+              </CardContent>
+            </Card>
+
+            {/* Active Sessions security panel */}
+            <Card elevation={2} sx={{ mb: 3, borderLeft: 4, borderColor: 'info.main' }}>
+              <CardContent>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <DevicesIcon color="info" />
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                      Active Sessions
+                    </Typography>
+                    {sessions.length > 0 && (
+                      <Chip
+                        size="small"
+                        label={`${sessions.length} device${sessions.length > 1 ? 's' : ''}`}
+                        color="info"
+                        variant="outlined"
+                      />
+                    )}
+                  </Stack>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="warning"
+                    startIcon={logoutAllLoading ? <CircularProgress size={14} color="inherit" /> : <LockOpenIcon />}
+                    disabled={logoutAllLoading || sessions.length <= 1}
+                    onClick={logoutAllDevices}
+                  >
+                    Logout All Other Devices
+                  </Button>
+                </Stack>
+
+                {sessionsLoading ? (
+                  <Stack spacing={1}>
+                    <Skeleton variant="rounded" height={40} />
+                    <Skeleton variant="rounded" height={40} />
+                  </Stack>
+                ) : sessions.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">No active sessions found.</Typography>
+                ) : (
+                  <Stack spacing={1}>
+                    {sessions.map((s, idx) => (
+                      <Box
+                        key={s.id}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          p: 1.5,
+                          borderRadius: 1,
+                          bgcolor: idx === 0 ? 'rgba(2,136,209,0.06)' : 'grey.50',
+                          border: '1px solid',
+                          borderColor: idx === 0 ? 'info.light' : 'grey.200',
+                        }}
+                      >
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          <DevicesIcon fontSize="small" color={idx === 0 ? 'info' : 'disabled'} />
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                              {s.device_info ? s.device_info.substring(0, 60) + (s.device_info.length > 60 ? '…' : '') : 'Unknown device'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Logged in {formatDate(s.created_at)} · Expires {formatDate(s.expires_at)}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                        <Chip
+                          size="small"
+                          label={idx === 0 ? 'Current' : 'Active'}
+                          color={idx === 0 ? 'success' : 'default'}
+                          variant={idx === 0 ? 'filled' : 'outlined'}
+                        />
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
               </CardContent>
             </Card>
 

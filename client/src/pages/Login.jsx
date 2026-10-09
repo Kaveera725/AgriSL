@@ -144,6 +144,16 @@ export default function Login() {
               {t('nav.register')}
             </Link>
           </Typography>
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            align="center"
+            sx={{ display: 'block', mt: 2, px: 1, lineHeight: 1.5 }}
+          >
+            🔒 Your session is secured with a 45-minute access token.
+            You will be kept logged in automatically as long as you are active.
+          </Typography>
         </CardContent>
       </Card>
     </Box>
