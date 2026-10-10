@@ -740,6 +740,19 @@ export default function FarmerDashboard() {
                         (r.symptoms ? r.symptoms.split(/[,.\n]+/)[0]?.trim() : '') ||
                         'No symptom preview available';
 
+                      const rawConf = r.ml_confidence ?? parsed?.ml_confidence ?? parsed?.confidence_score ?? parsed?.probability;
+                      let confPercent = null;
+                      if (rawConf != null && !isNaN(parseFloat(rawConf))) {
+                        let val = parseFloat(rawConf);
+                        if (val > 0 && val <= 1) val = val * 100;
+                        confPercent = Number(val.toFixed(2));
+                      } else if (r.confidence_level || parsed?.confidence) {
+                        const lvl = String(r.confidence_level || parsed?.confidence).toLowerCase();
+                        if (lvl === 'high') confPercent = 95;
+                        else if (lvl === 'medium') confPercent = 70;
+                        else if (lvl === 'low') confPercent = 40;
+                      }
+
                       const DANGER_COLOR = { High: 'error', Medium: 'warning', Low: 'success' };
                       const RECOVERY_COLOR = { Good: 'success', Fair: 'warning', Poor: 'error' };
 
@@ -776,8 +789,16 @@ export default function FarmerDashboard() {
                                     </Tooltip>
                                   </Stack>
 
-                                  {/* Danger level badge & Recovery chance badge */}
+                                  {/* Confidence, Danger level badge & Recovery chance badge */}
                                   <Stack direction="row" spacing={1} sx={{ mt: 1, mb: 1 }} flexWrap="wrap" useFlexGap>
+                                    {confPercent != null && (
+                                      <Chip
+                                        size="small"
+                                        label={`Confidence: ${confPercent}%`}
+                                        color={confPercent >= 70 ? 'success' : confPercent >= 40 ? 'warning' : 'error'}
+                                        sx={{ fontWeight: 600, fontSize: '0.72rem' }}
+                                      />
+                                    )}
                                     <Chip
                                       size="small"
                                       label={`Danger: ${dangerLevel}`}

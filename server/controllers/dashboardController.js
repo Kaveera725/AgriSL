@@ -34,14 +34,26 @@ async function getFarmerDashboard(req, res) {
       [userId, CHAT_ARCHIVE_DAYS]
     );
 
-    const [disease_reports] = await pool.query(
-      `SELECT id, crop_type, district, disease_name, confidence_level, image_path, status, created_at
+    const [raw_disease_reports] = await pool.query(
+      `SELECT id, crop_type, district, disease_name, confidence_level, ml_confidence, full_result, image_path, status, created_at
        FROM disease_reports
        WHERE user_id = ?
        ORDER BY created_at DESC
        LIMIT 20`,
       [userId]
     );
+
+    const disease_reports = raw_disease_reports.map((r) => {
+      let parsed_result = null;
+      if (r.full_result) {
+        try {
+          parsed_result = JSON.parse(r.full_result);
+        } catch (_) {
+          parsed_result = null;
+        }
+      }
+      return { ...r, parsed_result };
+    });
 
     const [bookmarks] = await pool.query(
       `SELECT a.id, a.title_en, a.title_si, a.category, a.status,
