@@ -25,6 +25,7 @@ import {
   MenuItem,
   Rating,
   Select,
+  Skeleton,
   Snackbar,
   Tab,
   Table,
@@ -48,6 +49,8 @@ import ArticleIcon from '@mui/icons-material/Article';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import DevicesIcon from '@mui/icons-material/Devices';
+import LockOpenIcon from '@mui/icons-material/LockOpen';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
@@ -160,6 +163,42 @@ export default function AdminDashboard() {
 
   // Lightweight success toast
   const [snackbar, setSnackbar] = useState('');
+
+  // Active sessions (for security panel)
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [logoutAllLoading, setLogoutAllLoading] = useState(false);
+
+  // Fetch active sessions from the server
+  const fetchSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const { data } = await api.get('/auth/sessions');
+      setSessions(data.sessions || []);
+    } catch {
+      // silently ignore — sessions panel is non-critical
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
+
+  // Revoke all refresh tokens except the current one, then refresh session list
+  async function logoutAllDevices() {
+    setLogoutAllLoading(true);
+    try {
+      await api.post('/auth/logout-all');
+      setSnackbar('Logged out from all other devices successfully');
+      await fetchSessions();
+    } catch {
+      setError('Could not logout other devices. Please try again.');
+    } finally {
+      setLogoutAllLoading(false);
+    }
+  }
 
   // Articles tab state (lazy-loaded on first visit)
   const [articles, setArticles] = useState([]);
@@ -475,6 +514,83 @@ export default function AdminDashboard() {
             {stats.pending_officers === 1 ? '' : 's'} awaiting your review.
           </Alert>
         )}
+
+        {/* Active Sessions security panel */}
+        <Card elevation={2} sx={{ mb: 3, borderLeft: 4, borderColor: 'info.main' }}>
+          <CardContent>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <DevicesIcon color="info" />
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  Active Sessions
+                </Typography>
+                {sessions.length > 0 && (
+                  <Chip
+                    size="small"
+                    label={`${sessions.length} device${sessions.length > 1 ? 's' : ''}`}
+                    color="info"
+                    variant="outlined"
+                  />
+                )}
+              </Stack>
+              <Button
+                size="small"
+                variant="outlined"
+                color="warning"
+                startIcon={logoutAllLoading ? <CircularProgress size={14} color="inherit" /> : <LockOpenIcon />}
+                disabled={logoutAllLoading || sessions.length <= 1}
+                onClick={logoutAllDevices}
+              >
+                Logout All Other Devices
+              </Button>
+            </Stack>
+
+            {sessionsLoading ? (
+              <Stack spacing={1}>
+                <Skeleton variant="rounded" height={40} />
+                <Skeleton variant="rounded" height={40} />
+              </Stack>
+            ) : sessions.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">No active sessions found.</Typography>
+            ) : (
+              <Stack spacing={1}>
+                {sessions.map((s, idx) => (
+                  <Box
+                    key={s.id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      p: 1.5,
+                      borderRadius: 1,
+                      bgcolor: idx === 0 ? 'rgba(2,136,209,0.06)' : 'grey.50',
+                      border: '1px solid',
+                      borderColor: idx === 0 ? 'info.light' : 'grey.200',
+                    }}
+                  >
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <DevicesIcon fontSize="small" color={idx === 0 ? 'info' : 'disabled'} />
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                          {s.device_info ? s.device_info.substring(0, 60) + (s.device_info.length > 60 ? '…' : '') : 'Unknown device'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Logged in {formatDate(s.created_at)} · Expires {formatDate(s.expires_at)}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                    <Chip
+                      size="small"
+                      label={idx === 0 ? 'Current' : 'Active'}
+                      color={idx === 0 ? 'success' : 'default'}
+                      variant={idx === 0 ? 'filled' : 'outlined'}
+                    />
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Tabs */}
         <Tabs
