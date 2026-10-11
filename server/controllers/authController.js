@@ -31,7 +31,7 @@ function publicUser(u) {
 }
 
 async function register(req, res) {
-  const { name, email, password, district } = req.body;
+  const { name, email, password, district, phone } = req.body;
   let { role } = req.body;
   // Officer-only certification fields (sent as multipart form fields).
   const { designation, province } = req.body;
@@ -42,6 +42,13 @@ async function register(req, res) {
   if (!email || !EMAIL_RE.test(email)) errors.push('A valid email is required');
   if (!password || password.length < 8) errors.push('Password must be at least 8 characters');
   if (!district || !district.trim()) errors.push('District is required');
+
+  const phoneRegex = /^(\+94|0)[0-9]{9}$/;
+  if (!phone || !phone.trim()) {
+    errors.push('Phone number is required');
+  } else if (!phoneRegex.test(phone.trim().replace(/\s/g, ''))) {
+    errors.push('Invalid phone number. Use format: 0771234567 or +94771234567');
+  }
 
   // Only farmer/officer may self-register; default to farmer.
   if (role === undefined || role === null || role === '') role = 'farmer';
@@ -65,6 +72,7 @@ async function register(req, res) {
   const certPath = role === 'officer' && req.file ? req.file.filename : null;
   const officerDesignation = role === 'officer' ? designation.trim() : null;
   const officerProvince = role === 'officer' ? province.trim() : null;
+  const formattedPhone = phone ? phone.trim().replace(/\s/g, '') : null;
 
   try {
     const existing = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
@@ -75,15 +83,16 @@ async function register(req, res) {
     const passwordHash = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
       `INSERT INTO users
-         (name, email, password_hash, role, district, is_approved,
+         (name, email, password_hash, role, district, phone, is_approved,
           designation, province, cert_document_path)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name.trim(),
         email,
         passwordHash,
         role,
         district.trim(),
+        formattedPhone,
         isApproved,
         officerDesignation,
         officerProvince,

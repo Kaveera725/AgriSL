@@ -70,8 +70,8 @@ async function getUsers(req, res) {
       params.push(role);
     }
     if (search && search.trim()) {
-      where.push('(name LIKE ? OR email LIKE ?)');
-      params.push(`%${search.trim()}%`, `%${search.trim()}%`);
+      where.push('(name LIKE ? OR email LIKE ? OR phone LIKE ?)');
+      params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
     }
 
     const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -84,7 +84,7 @@ async function getUsers(req, res) {
 
     // limit/offset are validated integers, safe to interpolate.
     const [users] = await pool.query(
-      `SELECT id, name, email, role, district, is_approved, created_at,
+      `SELECT id, name, email, phone, role, district, is_approved, created_at,
               designation, province, cert_document_path, rejection_reason,
               deactivation_reason
        FROM users

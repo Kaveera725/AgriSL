@@ -68,6 +68,7 @@ const translations = {
       password: 'Password',
       confirmPassword: 'Confirm Password',
       fullName: 'Full Name',
+      phone: 'Phone Number',
       district: 'District',
       accountType: 'Account Type',
       farmer: 'Farmer',
@@ -266,6 +267,7 @@ const translations = {
       // "නැවත ලියන්න" (write again) is simpler than "confirm"
       confirmPassword: 'මුරපදය නැවත ලියන්න',
       fullName: 'සම්පූර්ණ නම',
+      phone: 'දුරකථන අංකය',
       district: 'දිස්ත්‍රික්කය',
       accountType: 'ගිණුම් වර්ගය',
       farmer: 'ගොවියා',

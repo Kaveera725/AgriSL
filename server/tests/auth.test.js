@@ -14,6 +14,7 @@ const validFarmer = () => ({
   email: uniqueEmail('farmer'),
   password: 'password123',
   district: 'Kandy',
+  phone: '0771234567',
   role: 'farmer',
 });
 
@@ -27,6 +28,7 @@ function registerOfficer(overrides = {}) {
     .field('email', email)
     .field('password', overrides.password || 'password123')
     .field('district', overrides.district || 'Kandy')
+    .field('phone', overrides.phone || '0777654321')
     .field('role', 'officer')
     .field('designation', overrides.designation || 'Field Officer')
     .field('province', overrides.province || 'Central');
@@ -64,6 +66,16 @@ describe('POST /api/auth/register', () => {
 
     expect(res.status).toBe(400);
     expect(Array.isArray(res.body.errors)).toBe(true);
+  });
+
+  test('missing or invalid phone → 400', async () => {
+    const { phone, ...withoutPhone } = validFarmer();
+    const res1 = await request(app).post('/api/auth/register').send(withoutPhone);
+    expect(res1.status).toBe(400);
+
+    const invalidPhoneFarmer = { ...validFarmer(), phone: '12345' };
+    const res2 = await request(app).post('/api/auth/register').send(invalidPhoneFarmer);
+    expect(res2.status).toBe(400);
   });
 
   test('as officer with certification → 201, is_approved = 0', async () => {

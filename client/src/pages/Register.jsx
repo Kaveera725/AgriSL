@@ -30,6 +30,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 const BILINGUAL_FONT = "'Noto Sans Sinhala', Roboto, sans-serif";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^(\+94|0)[0-9]{9}$/;
 
 const DISTRICTS = [
   'Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo',
@@ -65,6 +66,7 @@ export default function Register() {
   const [form, setForm] = useState({
     name: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
     district: '',
@@ -114,6 +116,11 @@ export default function Register() {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Full name is required';
     if (!form.email || !EMAIL_RE.test(form.email)) errs.email = 'Enter a valid email';
+    if (!form.phone || !form.phone.trim()) {
+      errs.phone = 'Phone number is required';
+    } else if (!PHONE_RE.test(form.phone.trim().replace(/\s/g, ''))) {
+      errs.phone = 'Enter a valid phone number (e.g. 0771234567 or +94771234567)';
+    }
     if (!form.password || form.password.length < 8)
       errs.password = 'Password must be at least 8 characters';
     if (form.confirmPassword !== form.password)
@@ -144,6 +151,7 @@ export default function Register() {
       const formData = new FormData();
       formData.append('name', form.name.trim());
       formData.append('email', form.email);
+      formData.append('phone', form.phone.trim());
       formData.append('password', form.password);
       formData.append('district', form.district);
       formData.append('role', form.role);
@@ -255,6 +263,16 @@ export default function Register() {
                   onChange={(e) => setField('email', e.target.value)}
                   error={!!fieldErrors.email}
                   helperText={fieldErrors.email}
+                />
+                <TextField
+                  label={t('auth.phone')}
+                  fullWidth
+                  margin="normal"
+                  placeholder="0771234567"
+                  value={form.phone}
+                  onChange={(e) => setField('phone', e.target.value)}
+                  error={!!fieldErrors.phone}
+                  helperText={fieldErrors.phone}
                 />
                 <TextField
                   label={t('auth.password')}

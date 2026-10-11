@@ -745,7 +745,7 @@ export default function AdminDashboard() {
             >
               <TextField
                 size="small"
-                label="Search name or email"
+                label="Search name, email, or phone"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 sx={{ flex: 1 }}
@@ -777,6 +777,7 @@ export default function AdminDashboard() {
                     <TableRow>
                       <TableCell>Name</TableCell>
                       <TableCell>Email</TableCell>
+                      <TableCell>Phone</TableCell>
                       <TableCell>Role</TableCell>
                       <TableCell>District</TableCell>
                       <TableCell>Status</TableCell>
@@ -787,7 +788,7 @@ export default function AdminDashboard() {
                   <TableBody>
                     {users.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                        <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                           <Typography color="text.secondary">No users found.</Typography>
                         </TableCell>
                       </TableRow>
@@ -803,6 +804,7 @@ export default function AdminDashboard() {
                           >
                             <TableCell>{u.name}</TableCell>
                             <TableCell>{u.email}</TableCell>
+                            <TableCell>{u.phone || '—'}</TableCell>
                             <TableCell>
                               <Chip
                                 size="small"
@@ -1205,6 +1207,10 @@ export default function AdminDashboard() {
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary">District</Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>{certOfficer.district || '—'}</Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography variant="caption" color="text.secondary">Phone</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{certOfficer.phone || '—'}</Typography>
                 </Grid>
               </Grid>
 

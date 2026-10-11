@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 --  AgriSL -- Clean Developer Seed
 --  Generated : 2026-09-09
 --  Contains  : Full schema + 3 official demo accounts only.
@@ -34,6 +34,7 @@ CREATE TABLE `users` (
   `password_hash`       VARCHAR(255)  NOT NULL,
   `role`                ENUM('farmer','officer','admin') NOT NULL DEFAULT 'farmer',
   `district`            VARCHAR(100)  NULL,
+  `phone`               VARCHAR(20)   NULL,
   `designation`         VARCHAR(150)  NULL,
   `province`            VARCHAR(100)  NULL,
   `cert_document_path`  VARCHAR(255)  NULL,
@@ -152,11 +153,11 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- ============================================================
 
 INSERT INTO `users`
-  (`id`, `name`, `email`, `password_hash`, `role`, `district`, `is_approved`, `is_active`)
+  (`id`, `name`, `email`, `password_hash`, `role`, `district`, `phone`, `is_approved`, `is_active`)
 VALUES
-  (1, 'Admin',        'admin@agrisl.lk',   '$2b$10$8Zv7uHgZRsv7U8G4DxAj6eTKGkKhZ8joVtygxHU.TW4UksAAu3wK2', 'admin',   'Colombo', 1, 1),
-  (2, 'Test Farmer',  'farmer@agrisl.lk',  '$2b$10$5rxFOUJaSi9J4FoC4.7CDOGvabUV.UGz.77d4JBW4xD7ucHJKS3xG', 'farmer',  'Kalutara',1, 1),
-  (3, 'Test Officer', 'officer@agrisl.lk', '$2b$10$DCcTbSLs76o5bzZFkWNzyuL/GJURHFlniURE6xc6K/GiI8bm2hot6', 'officer', 'Galle',   1, 1);
+  (1, 'Admin',        'admin@agrisl.lk',   '$2b$10$8Zv7uHgZRsv7U8G4DxAj6eTKGkKhZ8joVtygxHU.TW4UksAAu3wK2', 'admin',   'Colombo', NULL,         1, 1),
+  (2, 'Test Farmer',  'farmer@agrisl.lk',  '$2b$10$5rxFOUJaSi9J4FoC4.7CDOGvabUV.UGz.77d4JBW4xD7ucHJKS3xG', 'farmer',  'Kalutara', '0771234567', 1, 1),
+  (3, 'Test Officer', 'officer@agrisl.lk', '$2b$10$DCcTbSLs76o5bzZFkWNzyuL/GJURHFlniURE6xc6K/GiI8bm2hot6', 'officer', 'Galle',    '0777654321', 1, 1);
 
 -- All other tables are intentionally empty.
 -- The developer starts with a clean slate and generates

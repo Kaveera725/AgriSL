@@ -155,18 +155,18 @@ async function migrate() {
 
     // Seed users (idempotent — skip if the email already exists).
     const users = [
-      { name: 'Admin', email: 'admin@agrisl.lk', password: 'admin123', role: 'admin', district: 'Colombo', is_approved: 1 },
-      { name: 'Test Farmer', email: 'farmer@agrisl.lk', password: 'farmer123', role: 'farmer', district: 'Kandy', is_approved: 1 },
-      { name: 'Test Officer', email: 'officer@agrisl.lk', password: 'officer123', role: 'officer', district: 'Galle', is_approved: 1 },
+      { name: 'Admin', email: 'admin@agrisl.lk', password: 'admin123', role: 'admin', district: 'Colombo', phone: null, is_approved: 1 },
+      { name: 'Test Farmer', email: 'farmer@agrisl.lk', password: 'farmer123', role: 'farmer', district: 'Kandy', phone: '0771234567', is_approved: 1 },
+      { name: 'Test Officer', email: 'officer@agrisl.lk', password: 'officer123', role: 'officer', district: 'Galle', phone: '0777654321', is_approved: 1 },
     ];
 
     for (const u of users) {
       const hash = await bcrypt.hash(u.password, 10);
       await connection.query(
-        `INSERT INTO users (name, email, password_hash, role, district, is_approved)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE name = VALUES(name)`,
-        [u.name, u.email, hash, u.role, u.district, u.is_approved]
+        `INSERT INTO users (name, email, password_hash, role, district, phone, is_approved)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE name = VALUES(name), phone = VALUES(phone)`,
+        [u.name, u.email, hash, u.role, u.district, u.phone, u.is_approved]
       );
       console.log(`Seeded user: ${u.email} (${u.role})`);
     }
