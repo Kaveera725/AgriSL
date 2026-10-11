@@ -27,6 +27,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Static uploads
+const fs = require('fs');
+const profilesDir = path.join(__dirname, 'uploads/profiles');
+if (!fs.existsSync(profilesDir)) {
+  fs.mkdirSync(profilesDir, { recursive: true });
+}
+app.use('/uploads/profiles', express.static(profilesDir));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health check

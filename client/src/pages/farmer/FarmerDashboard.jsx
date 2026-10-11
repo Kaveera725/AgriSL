@@ -49,11 +49,13 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ShareIcon from '@mui/icons-material/Share';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import PhoneIcon from '@mui/icons-material/Phone';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import Navbar from '../../components/Navbar';
 import DiseaseResultCard from '../../components/DiseaseResultCard';
+import EditProfileModal from '../../components/EditProfileModal';
 
 // Fill {placeholders} in a translated string, e.g. fmt('Show ({n})', { n: 3 }).
 function fmt(template, vars = {}) {
@@ -62,7 +64,9 @@ function fmt(template, vars = {}) {
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 // Uploads are served from the API origin (not under /api), so build URLs directly.
-const UPLOADS_BASE = 'http://localhost:5000/uploads';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const UPLOADS_BASE = `${API_BASE.replace('/api', '')}/uploads`;
+const PROFILES_BASE = `${API_BASE.replace('/api', '')}/uploads/profiles`;
 
 const DISTRICTS = [
   'Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo',
@@ -93,7 +97,7 @@ function formatDate(ts) {
 
 export default function FarmerDashboard() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user, updateUser } = useAuth();
   const { t } = useLanguage();
 
   const [profile, setProfile] = useState(null);
@@ -421,87 +425,132 @@ export default function FarmerDashboard() {
             <Divider sx={{ mb: 3 }} />
 
             {/* Profile card */}
-            <Card elevation={2} sx={{ mb: 3 }}>
-              <CardContent>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={3}
-                  sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
-                >
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ sm: 'center' }}>
-                    <Box sx={{ position: 'relative', display: 'inline-block' }}>
-                      <Avatar 
-                        src={profile?.profile_picture ? `${UPLOADS_BASE}/${profile.profile_picture}` : undefined}
-                        sx={{ width: 80, height: 80, fontSize: 32, bgcolor: 'primary.main' }}
+            {(() => {
+              const displayUser = { ...user, ...profile };
+              const photoSrc = displayUser?.profile_photo
+                ? `${PROFILES_BASE}/${displayUser.profile_photo}`
+                : (displayUser?.profile_picture ? `${UPLOADS_BASE}/${displayUser.profile_picture}` : undefined);
+
+              return (
+                <>
+                  <Card elevation={2} sx={{ mb: 3 }}>
+                    <CardContent>
+                      <Stack
+                        direction={{ xs: 'column', sm: 'row' }}
+                        spacing={3}
+                        sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
                       >
-                        {profile?.name ? profile.name.charAt(0).toUpperCase() : '?'}
-                      </Avatar>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingPic}
-                        sx={{
-                          position: 'absolute',
-                          bottom: -4,
-                          right: -4,
-                          bgcolor: 'background.paper',
-                          border: '1px solid #ddd',
-                          '&:hover': { bgcolor: 'grey.100' }
-                        }}
-                      >
-                        {uploadingPic ? <CircularProgress size={16} /> : <EditIcon fontSize="small" />}
-                      </IconButton>
-                      <input 
-                        type="file" 
-                        accept="image/jpeg, image/png"
-                        hidden 
-                        ref={fileInputRef} 
-                        onChange={handleProfilePicChange} 
-                      />
-                    </Box>
-                    <Box>
-                      <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                        {profile?.name}
-                      </Typography>
-                    <Stack
-                      direction="row"
-                      spacing={2}
-                      flexWrap="wrap"
-                      sx={{ mt: 1, color: 'text.secondary' }}
-                    >
-                      <Stack direction="row" spacing={0.5} alignItems="center">
-                        <EmailIcon sx={{ fontSize: 18 }} />
-                        <Typography variant="body2">{profile?.email}</Typography>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ sm: 'center' }}>
+                          <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                            <Avatar
+                              src={photoSrc}
+                              sx={{ width: 80, height: 80, fontSize: 32, bgcolor: 'primary.main', cursor: 'pointer' }}
+                              onClick={() => setEditOpen(true)}
+                            >
+                              {displayUser?.name ? displayUser.name.charAt(0).toUpperCase() : '?'}
+                            </Avatar>
+                            <IconButton
+                              size="small"
+                              onClick={() => setEditOpen(true)}
+                              sx={{
+                                position: 'absolute',
+                                bottom: -4,
+                                right: -4,
+                                bgcolor: 'background.paper',
+                                border: '1px solid #ddd',
+                                '&:hover': { bgcolor: 'grey.100' },
+                              }}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                          <Box>
+                            <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+                              <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                                {displayUser?.name}
+                              </Typography>
+                              <Chip
+                                icon={<AgricultureIcon />}
+                                label="Farmer"
+                                color="success"
+                                size="small"
+                                sx={{ fontWeight: 600, fontFamily: BILINGUAL_FONT }}
+                              />
+                              <Chip
+                                label={(displayUser?.preferred_language || 'en').toUpperCase()}
+                                size="small"
+                                variant="outlined"
+                                color="success"
+                                sx={{ fontWeight: 700 }}
+                              />
+                            </Stack>
+                            <Stack
+                              direction="row"
+                              spacing={2}
+                              flexWrap="wrap"
+                              sx={{ mt: 1, color: 'text.secondary' }}
+                            >
+                              <Stack direction="row" spacing={0.5} alignItems="center">
+                                <EmailIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                                <Typography variant="body2" color="text.secondary">{displayUser?.email}</Typography>
+                              </Stack>
+                              <Stack direction="row" spacing={0.5} alignItems="center">
+                                <PlaceIcon sx={{ fontSize: 18 }} />
+                                <Typography variant="body2" sx={{ fontFamily: BILINGUAL_FONT }}>
+                                  {displayUser?.district || t('farmerDash.noDistrict')}
+                                </Typography>
+                              </Stack>
+                              <Stack direction="row" spacing={0.5} alignItems="center">
+                                <PhoneIcon sx={{ fontSize: 18 }} />
+                                {displayUser?.phone ? (
+                                  <Typography variant="body2">{displayUser.phone}</Typography>
+                                ) : (
+                                  <Typography
+                                    variant="body2"
+                                    sx={{ color: 'primary.main', cursor: 'pointer', textDecoration: 'underline' }}
+                                    onClick={() => setEditOpen(true)}
+                                  >
+                                    Add phone number
+                                  </Typography>
+                                )}
+                              </Stack>
+                              <Stack direction="row" spacing={0.5} alignItems="center">
+                                <CalendarMonthIcon sx={{ fontSize: 18 }} />
+                                <Typography variant="body2" sx={{ fontFamily: BILINGUAL_FONT }}>
+                                  {fmt(t('farmerDash.memberSince'), {
+                                    date: formatDate(displayUser?.created_at),
+                                  })}
+                                </Typography>
+                              </Stack>
+                            </Stack>
+                          </Box>
+                        </Stack>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          startIcon={<EditIcon />}
+                          onClick={() => setEditOpen(true)}
+                          sx={{ fontFamily: BILINGUAL_FONT, minWidth: 140 }}
+                        >
+                          EDIT PROFILE
+                        </Button>
                       </Stack>
-                      <Stack direction="row" spacing={0.5} alignItems="center">
-                        <PlaceIcon sx={{ fontSize: 18 }} />
-                        <Typography variant="body2" sx={{ fontFamily: BILINGUAL_FONT }}>
-                          {profile?.district || t('farmerDash.noDistrict')}
-                        </Typography>
-                      </Stack>
-                      <Stack direction="row" spacing={0.5} alignItems="center">
-                        <CalendarMonthIcon sx={{ fontSize: 18 }} />
-                        <Typography variant="body2" sx={{ fontFamily: BILINGUAL_FONT }}>
-                          {fmt(t('farmerDash.memberSince'), {
-                            date: formatDate(profile?.created_at),
-                          })}
-                        </Typography>
-                      </Stack>
-                    </Stack>
-                  </Box>
-                </Stack>
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    startIcon={<EditIcon />}
-                    onClick={openEdit}
-                    sx={{ fontFamily: BILINGUAL_FONT }}
-                  >
-                    {t('farmerDash.editProfile')}
-                  </Button>
-                </Stack>
-              </CardContent>
-            </Card>
+                    </CardContent>
+                  </Card>
+
+                  <EditProfileModal
+                    open={editOpen}
+                    onClose={() => setEditOpen(false)}
+                    user={displayUser}
+                    onSuccess={(updatedUser) => {
+                      updateUser(updatedUser);
+                      setProfile((prev) => ({ ...prev, ...updatedUser }));
+                      setEditOpen(false);
+                    }}
+                  />
+                </>
+              );
+            })()}
 
             {/* Quick stats */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -978,63 +1027,6 @@ export default function FarmerDashboard() {
           </>
         )}
       </Container>
-
-      {/* Edit profile dialog */}
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ fontFamily: BILINGUAL_FONT }}>
-          {t('farmerDash.editProfile')}
-        </DialogTitle>
-        <DialogContent>
-          {editError && (
-            <Alert severity="error" sx={{ mb: 2, fontFamily: BILINGUAL_FONT }}>
-              {editError}
-            </Alert>
-          )}
-          <TextField
-            label={t('farmerDash.name')}
-            fullWidth
-            margin="normal"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-          />
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="edit-district-label">{t('farmerDash.districtLabel')}</InputLabel>
-            <Select
-              labelId="edit-district-label"
-              label={t('farmerDash.districtLabel')}
-              value={editDistrict}
-              onChange={(e) => setEditDistrict(e.target.value)}
-            >
-              {DISTRICTS.map((d) => (
-                <MenuItem key={d} value={d}>
-                  {d}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setEditOpen(false)}
-            disabled={savingProfile}
-            sx={{ fontFamily: BILINGUAL_FONT }}
-          >
-            {t('farmerDash.cancel')}
-          </Button>
-          <Button
-            variant="contained"
-            onClick={saveProfile}
-            disabled={savingProfile}
-            sx={{ fontFamily: BILINGUAL_FONT }}
-          >
-            {savingProfile ? (
-              <CircularProgress size={20} color="inherit" />
-            ) : (
-              t('farmerDash.save')
-            )}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Disease report view dialog */}
       <Dialog

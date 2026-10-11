@@ -29,7 +29,9 @@ import MenuIcon from '@mui/icons-material/Menu';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import EditProfileModal from './EditProfileModal';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const BILINGUAL_FONT = "'Noto Sans Sinhala', Roboto, sans-serif";
 
 // Navigation links shown for each role. labelKey resolves via the i18n dictionary
@@ -101,13 +103,14 @@ function isActive(pathname, to) {
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, updateUser } = useAuth();
   const { t } = useLanguage();
 
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   // Live session countdown — minutes remaining on the access token.
   const [sessionMins, setSessionMins] = useState(() => getMinutesRemaining());
 
@@ -349,11 +352,14 @@ export default function Navbar() {
 
             {/* User info + logout */}
             <Stack direction="row" spacing={1.5} alignItems="center" sx={{ ml: 2 }}>
-              <Avatar 
-                src={user?.profile_picture ? `http://localhost:5000/uploads/${user.profile_picture}` : undefined}
-                sx={{ bgcolor: 'secondary.main', width: 36, height: 36, fontSize: 15 }}
+              <Avatar
+                src={user?.profile_photo
+                  ? `${API_BASE.replace('/api','')}/uploads/profiles/${user.profile_photo}`
+                  : (user?.profile_picture ? `${API_BASE.replace('/api','')}/uploads/${user.profile_picture}` : undefined)}
+                sx={{ bgcolor: 'primary.main', width: 36, height: 36, cursor: 'pointer' }}
+                onClick={() => setEditOpen(true)}
               >
-                {initials(user?.name)}
+                {!user?.profile_photo && !user?.profile_picture && (user?.name?.charAt(0).toUpperCase() || initials(user?.name))}
               </Avatar>
               <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                 <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.1 }}>
@@ -481,6 +487,18 @@ export default function Navbar() {
           </Box>
         </Box>
       </Drawer>
+
+      {isAuthenticated && (
+        <EditProfileModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          user={user}
+          onSuccess={(updatedUser) => {
+            updateUser(updatedUser);
+            setEditOpen(false);
+          }}
+        />
+      )}
     </AppBar>
   );
 }

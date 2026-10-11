@@ -9,6 +9,7 @@ const {
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { uploadCert, CERT_DIR } = require('../middleware/certUpload');
 const { uploadImage } = require('../middleware/upload');
+const { profileUpload } = require('../middleware/profileUpload');
 
 // ── Rate limiters ─────────────────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ const refreshLimiter = rateLimit({
 router.post('/register', loginLimiter, uploadCert, register);
 router.post('/login', loginLimiter, login);
 router.get('/me', requireAuth, getMe);
-router.put('/profile', requireAuth, updateProfile);
+router.put('/profile', requireAuth, profileUpload.single('profile_photo'), updateProfile);
 router.post('/profile-picture', requireAuth, uploadImage, updateProfilePicture);
 
 // Revoke a single refresh token on logout (access token required to bind to user).

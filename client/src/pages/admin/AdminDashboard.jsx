@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Card,
@@ -21,6 +22,7 @@ import {
   Divider,
   FormControl,
   Grid,
+  IconButton,
   InputLabel,
   MenuItem,
   Rating,
@@ -51,9 +53,14 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import DevicesIcon from '@mui/icons-material/Devices';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
+import EditIcon from '@mui/icons-material/Edit';
+import PhoneIcon from '@mui/icons-material/Phone';
+import EmailIcon from '@mui/icons-material/Email';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
+import EditProfileModal from '../../components/EditProfileModal';
 
 const BILINGUAL_FONT = 'Noto Sans Sinhala, Roboto, sans-serif';
 
@@ -130,11 +137,12 @@ function StatCard({ icon, label, value, color = 'primary.main' }) {
 }
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
 
   const [stats, setStats] = useState(null);
   const [tab, setTab] = useState(0);
   const [error, setError] = useState('');
+  const [editOpen, setEditOpen] = useState(false);
 
   // Users tab state
   const [users, setUsers] = useState([]);
@@ -391,6 +399,8 @@ export default function AdminDashboard() {
             justifyContent: 'space-between',
             alignItems: 'center',
             mb: 1,
+            flexWrap: 'wrap',
+            gap: 2,
           }}
         >
           <Box>
@@ -403,15 +413,135 @@ export default function AdminDashboard() {
               </Typography>
             )}
           </Box>
-          <Chip
-            icon={<AdminPanelSettingsIcon />}
-            label="Administrator"
-            color="primary"
-            variant="outlined"
-            sx={{ fontWeight: 600 }}
-          />
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<EditIcon />}
+              onClick={() => setEditOpen(true)}
+            >
+              Edit My Profile
+            </Button>
+          </Stack>
         </Box>
         <Divider sx={{ mb: 3 }} />
+
+        {/* Admin Profile Section */}
+        {(() => {
+          const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+          const PROFILES_BASE = `${API_BASE.replace('/api', '')}/uploads/profiles`;
+          const photoSrc = user?.profile_photo
+            ? `${PROFILES_BASE}/${user.profile_photo}`
+            : undefined;
+
+          return (
+            <Card elevation={2} sx={{ mb: 3 }}>
+              <CardContent>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={3}
+                  sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
+                >
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ sm: 'center' }}>
+                    <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                      <Avatar
+                        src={photoSrc}
+                        sx={{ width: 70, height: 70, fontSize: 28, bgcolor: 'error.main', cursor: 'pointer' }}
+                        onClick={() => setEditOpen(true)}
+                      >
+                        {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
+                      </Avatar>
+                      <IconButton
+                        size="small"
+                        onClick={() => setEditOpen(true)}
+                        sx={{
+                          position: 'absolute',
+                          bottom: -4,
+                          right: -4,
+                          bgcolor: 'background.paper',
+                          border: '1px solid #ddd',
+                          '&:hover': { bgcolor: 'grey.100' },
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                    <Box>
+                      <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                          {user?.name}
+                        </Typography>
+                        <Chip
+                          icon={<AdminPanelSettingsIcon />}
+                          label="Administrator"
+                          color="error"
+                          size="small"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </Stack>
+                      <Stack
+                        direction="row"
+                        spacing={2.5}
+                        flexWrap="wrap"
+                        sx={{ mt: 1, color: 'text.secondary' }}
+                      >
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <EmailIcon sx={{ fontSize: 18 }} />
+                          <Typography variant="body2">{user?.email}</Typography>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: 'warning.dark', bgcolor: 'warning.light', px: 0.8, py: 0.2, borderRadius: 1, ml: 0.5, fontWeight: 500 }}
+                          >
+                            Login email (editable)
+                          </Typography>
+                        </Stack>
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <PhoneIcon sx={{ fontSize: 18 }} />
+                          {user?.phone ? (
+                            <Typography variant="body2">{user.phone}</Typography>
+                          ) : (
+                            <Typography
+                              variant="body2"
+                              sx={{ color: 'primary.main', cursor: 'pointer', textDecoration: 'underline' }}
+                              onClick={() => setEditOpen(true)}
+                            >
+                              Add phone number
+                            </Typography>
+                          )}
+                        </Stack>
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <CalendarMonthIcon sx={{ fontSize: 18 }} />
+                          <Typography variant="body2">
+                            Account created: {formatDate(user?.created_at)}
+                          </Typography>
+                        </Stack>
+                      </Stack>
+                    </Box>
+                  </Stack>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<EditIcon />}
+                    onClick={() => setEditOpen(true)}
+                    sx={{ minWidth: 150 }}
+                  >
+                    Edit My Profile
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        <EditProfileModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          user={user}
+          onSuccess={(updatedUser) => {
+            updateUser(updatedUser);
+            setEditOpen(false);
+          }}
+        />
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>

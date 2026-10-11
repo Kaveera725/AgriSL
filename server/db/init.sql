@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('farmer', 'officer', 'admin') NOT NULL DEFAULT 'farmer',
   district VARCHAR(100),
+  phone VARCHAR(20) NULL COMMENT 'Contact phone number',
+  profile_photo VARCHAR(255) NULL COMMENT 'Profile photo filename or URL',
+  preferred_language ENUM('en', 'si') DEFAULT 'en' COMMENT 'Default language preference EN or SI',
+  gov_service_id VARCHAR(100) NULL,
   -- Officer certification details (collected at officer sign-up; NULL for farmers/admins).
   designation VARCHAR(150) NULL,           -- e.g. "Agricultural Instructor", "Field Officer"
   province VARCHAR(100) NULL,              -- province the officer works in

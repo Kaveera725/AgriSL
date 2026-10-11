@@ -20,6 +20,13 @@ function publicUser(u) {
     district: u.district,
     is_approved: u.is_approved,
     profile_picture: u.profile_picture,
+    phone: u.phone,
+    profile_photo: u.profile_photo,
+    preferred_language: u.preferred_language || 'en',
+    designation: u.designation,
+    province: u.province,
+    gov_service_id: u.gov_service_id,
+    created_at: u.created_at,
   };
 }
 
@@ -131,6 +138,7 @@ async function register(req, res) {
           : 'Registration successful',
       accessToken,
       refreshToken,
+      token: accessToken,
       expiresIn: getAccessTokenExpiresInSeconds(),
       user: publicUser(user),
     });
@@ -201,6 +209,7 @@ async function login(req, res) {
     return res.json({
       accessToken,
       refreshToken,
+      token: accessToken,
       expiresIn: getAccessTokenExpiresInSeconds(), // 15 minutes in seconds
       user: publicUser(user),
     });
@@ -210,45 +219,194 @@ async function login(req, res) {
   }
 }
 
-// Returns the authenticated user's data straight from the verified token.
-function getMe(req, res) {
-  return res.json({ user: req.user });
+// Returns the authenticated user's data with fresh fields from the database.
+async function getMe(req, res) {
+  try {
+    const [rows] = await pool.query(
+      `SELECT id, name, email, role, district, is_approved,
+              phone, profile_photo, preferred_language,
+              designation, province, gov_service_id, created_at
+       FROM users WHERE id = ?`,
+      [req.user.id]
+    );
+    if (rows.length) {
+      return res.json({ user: rows[0] });
+    }
+    return res.json({ user: req.user });
+  } catch {
+    return res.json({ user: req.user });
+  }
 }
 
-// PUT /api/auth/profile — update the current user's name and district.
-// Returns a fresh token so the client's decoded session reflects the change.
-async function updateProfile(req, res) {
-  const { name, district } = req.body;
-
-  const errors = [];
-  if (!name || !name.trim()) errors.push('Name is required');
-  if (!district || !district.trim()) errors.push('District is required');
-  if (errors.length) {
-    return res.status(400).json({ message: 'Validation failed', errors });
-  }
-
+// PUT /api/auth/profile — update profile fields according to user role and credentials.
+const updateProfile = async (req, res) => {
   try {
-    await pool.query('UPDATE users SET name = ?, district = ? WHERE id = ?', [
-      name.trim(),
-      district.trim(),
-      req.user.id,
-    ]);
+    const userId = req.user.id;
+    const userRole = req.user.role;
 
-    const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
-    const user = rows[0];
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    // Build update object based on what was submitted
+    const updates = {};
+
+    // Fields ALL roles can update
+    if (req.body.name !== undefined) {
+      if (!req.body.name || req.body.name.trim().length < 2) {
+        return res.status(400).json({ message: 'Name must be at least 2 characters' });
+      }
+      updates.name = req.body.name.trim();
     }
 
-    // Return a fresh access token reflecting the updated name/district.
-    const token = generateAccessToken(user);
+    if (req.body.phone !== undefined) {
+      // Validate Sri Lankan phone number format
+      const phoneRegex = /^(\+94|0)[0-9]{9}$/;
+      if (req.body.phone && !phoneRegex.test(req.body.phone.replace(/\s/g, ''))) {
+        return res.status(400).json({
+          message: 'Invalid phone number. Use format: 0771234567 or +94771234567'
+        });
+      }
+      updates.phone = req.body.phone ? req.body.phone.trim() : null;
+    }
 
-    return res.json({ token, user: publicUser(user) });
-  } catch (err) {
-    console.error('updateProfile error:', err.message);
-    return res.status(500).json({ message: 'Server error' });
+    if (req.body.preferred_language !== undefined) {
+      if (!['en', 'si'].includes(req.body.preferred_language)) {
+        return res.status(400).json({ message: 'Language must be en or si' });
+      }
+      updates.preferred_language = req.body.preferred_language;
+    }
+
+    // Profile photo upload
+    if (req.file) {
+      updates.profile_photo = req.file.filename;
+    }
+
+    // FARMER-specific fields
+    if (userRole === 'farmer') {
+      if (req.body.district !== undefined) {
+        if (!req.body.district) {
+          return res.status(400).json({ message: 'District is required' });
+        }
+        updates.district = req.body.district;
+      }
+    }
+
+    // OFFICER-specific fields
+    if (userRole === 'officer') {
+      if (req.body.district !== undefined) {
+        updates.district = req.body.district;
+      }
+      if (req.body.designation !== undefined) {
+        updates.designation = req.body.designation;
+      }
+      if (req.body.province !== undefined) {
+        updates.province = req.body.province;
+      }
+    }
+
+    // ADMIN-specific fields
+    if (userRole === 'admin') {
+      // Admin can change email — requires current password verification
+      if (req.body.email !== undefined) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(req.body.email)) {
+          return res.status(400).json({ message: 'Invalid email address' });
+        }
+        // Check email not already taken by another user
+        const [existing] = await pool.query(
+          'SELECT id FROM users WHERE email = ? AND id != ?',
+          [req.body.email, userId]
+        );
+        if (existing.length > 0) {
+          return res.status(409).json({ message: 'Email already in use by another account' });
+        }
+        // Require current password to change email
+        if (!req.body.current_password) {
+          return res.status(400).json({
+            message: 'Current password required to change email'
+          });
+        }
+        const [users] = await pool.query(
+          'SELECT password_hash FROM users WHERE id = ?', [userId]
+        );
+        const valid = await bcrypt.compare(req.body.current_password, users[0].password_hash);
+        if (!valid) {
+          return res.status(401).json({ message: 'Current password is incorrect' });
+        }
+        updates.email = req.body.email.toLowerCase().trim();
+      }
+    }
+
+    // PASSWORD CHANGE — available to ALL roles
+    if (req.body.new_password !== undefined) {
+      // Require current password
+      if (!req.body.current_password) {
+        return res.status(400).json({
+          message: 'Current password required to set a new password'
+        });
+      }
+
+      // Validate new password
+      if (req.body.new_password.length < 8) {
+        return res.status(400).json({
+          message: 'New password must be at least 8 characters'
+        });
+      }
+
+      if (req.body.new_password !== req.body.confirm_password) {
+        return res.status(400).json({
+          message: 'New password and confirm password do not match'
+        });
+      }
+
+      // Verify current password
+      const [users] = await pool.query(
+        'SELECT password_hash FROM users WHERE id = ?', [userId]
+      );
+      const validPassword = await bcrypt.compare(
+        req.body.current_password, users[0].password_hash
+      );
+      if (!validPassword) {
+        return res.status(401).json({ message: 'Current password is incorrect' });
+      }
+
+      // Hash new password
+      updates.password_hash = await bcrypt.hash(req.body.new_password, 10);
+    }
+
+    // If nothing to update
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'No valid fields provided to update' });
+    }
+
+    // Build dynamic SQL update
+    const setClauses = Object.keys(updates).map(key => `${key} = ?`).join(', ');
+    const values = [...Object.values(updates), userId];
+
+    await pool.query(
+      `UPDATE users SET ${setClauses} WHERE id = ?`,
+      values
+    );
+
+    // Return updated user data (without password)
+    const [updatedUser] = await pool.query(
+      `SELECT id, name, email, role, district, is_approved,
+              phone, profile_photo, preferred_language,
+              designation, province, gov_service_id, created_at
+       FROM users WHERE id = ?`,
+      [userId]
+    );
+
+    const token = generateAccessToken(updatedUser[0]);
+
+    return res.json({
+      message: 'Profile updated successfully',
+      user: updatedUser[0],
+      token
+    });
+
+  } catch (error) {
+    console.error('Update profile error:', error);
+    return res.status(500).json({ message: 'Failed to update profile' });
   }
-}
+};
 
 async function updateProfilePicture(req, res) {
   if (!req.file) {

@@ -67,7 +67,7 @@ async function getFarmerDashboard(req, res) {
     );
 
     const [profileRows] = await pool.query(
-      'SELECT id, name, email, district, role, created_at FROM users WHERE id = ?',
+      'SELECT id, name, email, district, role, phone, profile_photo, preferred_language, created_at FROM users WHERE id = ?',
       [userId]
     );
 

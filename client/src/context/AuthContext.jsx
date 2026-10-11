@@ -161,12 +161,19 @@ export function AuthProvider({ children }) {
     return localStorage.getItem(ACCESS_TOKEN_KEY);
   }, []);
 
+  const updateUser = useCallback((updatedUserData) => {
+    const merged = { ...user, ...updatedUserData };
+    setUser(merged);
+    localStorage.setItem(USER_KEY, JSON.stringify(merged));
+  }, [user]);
+
   const value = {
     user,
     loading,
     isAuthenticated: !!user,
     login,
     logout,
+    updateUser,
     getAccessToken,
   };
 

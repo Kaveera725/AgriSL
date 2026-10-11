@@ -128,6 +128,31 @@ async function migrate() {
     `);
     console.log('refresh_tokens table created');
 
+    await addColumnIfMissing(
+      'users',
+      'gov_service_id',
+      'gov_service_id VARCHAR(100) NULL AFTER district'
+    );
+
+    const pool = connection;
+    try {
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS phone VARCHAR(20) NULL
+          COMMENT 'Contact phone number',
+        ADD COLUMN IF NOT EXISTS profile_photo VARCHAR(255) NULL
+          COMMENT 'Profile photo filename or URL',
+        ADD COLUMN IF NOT EXISTS preferred_language ENUM('en','si') DEFAULT 'en'
+          COMMENT 'Default language preference EN or SI'
+      `);
+      console.log('Profile columns added to users table');
+    } catch (alterErr) {
+      await addColumnIfMissing('users', 'phone', "phone VARCHAR(20) NULL COMMENT 'Contact phone number'");
+      await addColumnIfMissing('users', 'profile_photo', "profile_photo VARCHAR(255) NULL COMMENT 'Profile photo filename or URL'");
+      await addColumnIfMissing('users', 'preferred_language', "preferred_language ENUM('en','si') DEFAULT 'en' COMMENT 'Default language preference EN or SI'");
+      console.log('Profile columns added to users table');
+    }
+
     // Seed users (idempotent — skip if the email already exists).
     const users = [
       { name: 'Admin', email: 'admin@agrisl.lk', password: 'admin123', role: 'admin', district: 'Colombo', is_approved: 1 },

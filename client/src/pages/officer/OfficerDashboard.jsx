@@ -35,11 +35,28 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import ArticleIcon from '@mui/icons-material/Article';
 import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import BadgeIcon from '@mui/icons-material/Badge';
+import MapIcon from '@mui/icons-material/Map';
+import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import EmailIcon from '@mui/icons-material/Email';
+import PhoneIcon from '@mui/icons-material/Phone';
+import PlaceIcon from '@mui/icons-material/Place';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
+import EditProfileModal from '../../components/EditProfileModal';
 
-const UPLOADS_BASE = 'http://localhost:5000/uploads';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const UPLOADS_BASE = `${API_BASE.replace('/api', '')}/uploads`;
+const PROFILES_BASE = `${API_BASE.replace('/api', '')}/uploads/profiles`;
+
+function formatDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+}
 
 const CATEGORY_LABEL = {
   crop_management: 'Crop Management',
@@ -91,13 +108,14 @@ function StatCard({ icon, label, value, color = 'primary.main' }) {
 
 export default function OfficerDashboard() {
   const navigate = useNavigate();
-  const { user, login } = useAuth();
+  const { user, login, updateUser } = useAuth();
 
   const [articles, setArticles] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const fileInputRef = useRef(null);
   const [uploadingPic, setUploadingPic] = useState(false);
@@ -198,6 +216,7 @@ export default function OfficerDashboard() {
     <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
       <Navbar />
       <Container maxWidth="lg" sx={{ py: 4 }}>
+        {/* Page header */}
         <Box
           sx={{
             display: 'flex',
@@ -206,67 +225,179 @@ export default function OfficerDashboard() {
             mb: 1,
           }}
         >
-          <Stack direction="row" spacing={3} alignItems="center">
-            <Box sx={{ position: 'relative', display: 'inline-block' }}>
-              <Avatar 
-                src={user?.profile_picture ? `${UPLOADS_BASE}/${user.profile_picture}` : undefined}
-                sx={{ width: 80, height: 80, fontSize: 32, bgcolor: 'primary.main' }}
-              >
-                {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
-              </Avatar>
-              <IconButton 
-                size="small" 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingPic}
-                sx={{
-                  position: 'absolute',
-                  bottom: -4,
-                  right: -4,
-                  bgcolor: 'background.paper',
-                  border: '1px solid #ddd',
-                  '&:hover': { bgcolor: 'grey.100' }
-                }}
-              >
-                {uploadingPic ? <CircularProgress size={16} /> : <EditIcon fontSize="small" />}
-              </IconButton>
-              <input 
-                type="file" 
-                accept="image/jpeg, image/png"
-                hidden 
-                ref={fileInputRef} 
-                onChange={handleProfilePicChange} 
-              />
-            </Box>
-            <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                Officer Dashboard
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+              Officer Dashboard
+            </Typography>
+            {user?.name && (
+              <Typography variant="body2" color="text.secondary">
+                Welcome, {user.name}
               </Typography>
-              {user?.name && (
-                <Typography variant="body2" color="text.secondary">
-                  Welcome, {user.name}
-                </Typography>
-              )}
-            </Box>
-          </Stack>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Chip
-              icon={<EditIcon />}
-              label="Officer"
-              color="primary"
-              variant="outlined"
-              sx={{ fontWeight: 600 }}
-            />
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/officer/articles/new')}
-            >
-              Create New Article
-            </Button>
-          </Stack>
+            )}
+          </Box>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/officer/articles/new')}
+          >
+            Create New Article
+          </Button>
         </Box>
         <Divider sx={{ mb: 3 }} />
+
+        {/* Profile Card */}
+        {(() => {
+          const photoSrc = user?.profile_photo
+            ? `${PROFILES_BASE}/${user.profile_photo}`
+            : (user?.profile_picture ? `${UPLOADS_BASE}/${user.profile_picture}` : undefined);
+
+          return (
+            <>
+              <Card elevation={2} sx={{ mb: 3 }}>
+                <CardContent>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={3}
+                    sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
+                  >
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ sm: 'center' }}>
+                      <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                        <Avatar
+                          src={photoSrc}
+                          sx={{ width: 80, height: 80, fontSize: 32, bgcolor: 'primary.main', cursor: 'pointer' }}
+                          onClick={() => setEditOpen(true)}
+                        >
+                          {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
+                        </Avatar>
+                        <IconButton
+                          size="small"
+                          onClick={() => setEditOpen(true)}
+                          sx={{
+                            position: 'absolute',
+                            bottom: -4,
+                            right: -4,
+                            bgcolor: 'background.paper',
+                            border: '1px solid #ddd',
+                            '&:hover': { bgcolor: 'grey.100' },
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                      <Box>
+                        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+                          <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                            {user?.name}
+                          </Typography>
+                          <Chip
+                            icon={<BadgeIcon />}
+                            label="Officer"
+                            color="primary"
+                            size="small"
+                            sx={{ fontWeight: 600 }}
+                          />
+                          <Chip
+                            icon={<CheckCircleIcon />}
+                            label="Approved"
+                            color="success"
+                            size="small"
+                            sx={{ fontWeight: 600 }}
+                          />
+                          <Chip
+                            label={(user?.preferred_language || 'en').toUpperCase()}
+                            size="small"
+                            variant="outlined"
+                            color="primary"
+                            sx={{ fontWeight: 700 }}
+                          />
+                        </Stack>
+
+                        <Stack
+                          direction="row"
+                          spacing={2}
+                          flexWrap="wrap"
+                          sx={{ mt: 1, color: 'text.secondary' }}
+                        >
+                          {user?.designation && (
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                              <BadgeIcon sx={{ fontSize: 18 }} />
+                              <Typography variant="body2">{user.designation}</Typography>
+                            </Stack>
+                          )}
+                          {user?.province && (
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                              <MapIcon sx={{ fontSize: 18 }} />
+                              <Typography variant="body2">{user.province} Province</Typography>
+                            </Stack>
+                          )}
+                          <Stack direction="row" spacing={0.5} alignItems="center">
+                            <PlaceIcon sx={{ fontSize: 18 }} />
+                            <Typography variant="body2">{user?.district || 'No District'}</Typography>
+                          </Stack>
+                          <Stack direction="row" spacing={0.5} alignItems="center">
+                            <EmailIcon sx={{ fontSize: 18 }} />
+                            <Typography variant="body2">{user?.email}</Typography>
+                          </Stack>
+                          <Stack direction="row" spacing={0.5} alignItems="center">
+                            <PhoneIcon sx={{ fontSize: 18 }} />
+                            {user?.phone ? (
+                              <Typography variant="body2">{user.phone}</Typography>
+                            ) : (
+                              <Typography
+                                variant="body2"
+                                sx={{ color: 'primary.main', cursor: 'pointer', textDecoration: 'underline' }}
+                                onClick={() => setEditOpen(true)}
+                              >
+                                Add phone number
+                              </Typography>
+                            )}
+                          </Stack>
+                        </Stack>
+
+                        <Stack direction="row" spacing={2} sx={{ mt: 0.8 }} flexWrap="wrap" alignItems="center">
+                          {user?.gov_service_id && (
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                              <AssignmentIndIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                Service ID: {user.gov_service_id}
+                              </Typography>
+                            </Stack>
+                          )}
+                          <Stack direction="row" spacing={0.5} alignItems="center">
+                            <CalendarMonthIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
+                            <Typography variant="caption" color="text.secondary">
+                              Member since: {formatDate(user?.created_at)}
+                            </Typography>
+                          </Stack>
+                        </Stack>
+                      </Box>
+                    </Stack>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      startIcon={<EditIcon />}
+                      onClick={() => setEditOpen(true)}
+                      sx={{ minWidth: 140 }}
+                    >
+                      EDIT PROFILE
+                    </Button>
+                  </Stack>
+                </CardContent>
+              </Card>
+
+              <EditProfileModal
+                open={editOpen}
+                onClose={() => setEditOpen(false)}
+                user={user}
+                onSuccess={(updatedUser) => {
+                  updateUser(updatedUser);
+                  setEditOpen(false);
+                }}
+              />
+            </>
+          );
+        })()}
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
