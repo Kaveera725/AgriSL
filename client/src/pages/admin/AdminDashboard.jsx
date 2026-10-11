@@ -413,16 +413,6 @@ export default function AdminDashboard() {
               </Typography>
             )}
           </Box>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<EditIcon />}
-              onClick={() => setEditOpen(true)}
-            >
-              Edit My Profile
-            </Button>
-          </Stack>
         </Box>
         <Divider sx={{ mb: 3 }} />
 
