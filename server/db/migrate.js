@@ -153,20 +153,28 @@ async function migrate() {
       console.log('Profile columns added to users table');
     }
 
+    // Add review_message column to disease_reports (idempotent).
+    await addColumnIfMissing(
+      'disease_reports',
+      'review_message',
+      "`review_message` TEXT NULL COMMENT 'Officer review note sent back to farmer after reviewing the report'"
+    );
+
     // Seed users (idempotent — skip if the email already exists).
     const users = [
-      { name: 'Admin', email: 'admin@agrisl.lk', password: 'admin123', role: 'admin', district: 'Colombo', phone: null, is_approved: 1 },
-      { name: 'Test Farmer', email: 'farmer@agrisl.lk', password: 'farmer123', role: 'farmer', district: 'Kandy', phone: '0771234567', is_approved: 1 },
-      { name: 'Test Officer', email: 'officer@agrisl.lk', password: 'officer123', role: 'officer', district: 'Galle', phone: '0777654321', is_approved: 1 },
+      { name: 'Admin',        email: 'admin@agrisl.lk',          password: 'admin123',   role: 'admin',   district: 'Colombo', phone: null,          is_approved: 1, designation: null, province: null },
+      { name: 'Test Farmer',  email: 'farmer@agrisl.lk',         password: 'farmer123',  role: 'farmer',  district: 'Kandy',   phone: '0771234567',  is_approved: 1, designation: null, province: null },
+      { name: 'Test Officer', email: 'officer@agrisl.lk',        password: 'officer123', role: 'officer', district: 'Galle',   phone: '0777654321',  is_approved: 1, designation: 'Field Officer',           province: 'Southern' },
+      { name: 'Galle Officer',email: 'galleofficer@agrisl.lk',   password: 'galle123',   role: 'officer', district: 'Galle',   phone: '0712223344',  is_approved: 1, designation: 'Agricultural Instructor', province: 'Southern' },
     ];
 
     for (const u of users) {
       const hash = await bcrypt.hash(u.password, 10);
       await connection.query(
-        `INSERT INTO users (name, email, password_hash, role, district, phone, is_approved)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE name = VALUES(name), phone = VALUES(phone)`,
-        [u.name, u.email, hash, u.role, u.district, u.phone, u.is_approved]
+        `INSERT INTO users (name, email, password_hash, role, district, phone, is_approved, designation, province)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE name = VALUES(name), phone = VALUES(phone), designation = VALUES(designation), province = VALUES(province)`,
+        [u.name, u.email, hash, u.role, u.district, u.phone, u.is_approved, u.designation, u.province]
       );
       console.log(`Seeded user: ${u.email} (${u.role})`);
     }
@@ -175,6 +183,7 @@ async function migrate() {
     console.log('  admin@agrisl.lk / admin123');
     console.log('  farmer@agrisl.lk / farmer123');
     console.log('  officer@agrisl.lk / officer123');
+    console.log('  galleofficer@agrisl.lk / galle123');
   } finally {
     await connection.end();
   }

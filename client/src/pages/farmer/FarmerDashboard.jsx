@@ -1096,26 +1096,32 @@ export default function FarmerDashboard() {
               )}
               {officers.length === 0 ? (
                 <Typography color="text.secondary" sx={{ fontFamily: BILINGUAL_FONT }}>
-                  {t('farmerDash.noOfficers')}
+                  No approved agricultural officers are available in your district yet.
+                  Please check back later or contact your local agrarian service centre.
                 </Typography>
               ) : (
-                <FormControl fullWidth sx={{ mt: 1 }}>
-                  <InputLabel id="share-officer-label">
-                    {t('farmerDash.selectOfficer')}
-                  </InputLabel>
-                  <Select
-                    labelId="share-officer-label"
-                    label={t('farmerDash.selectOfficer')}
-                    value={selectedOfficer}
-                    onChange={(e) => setSelectedOfficer(e.target.value)}
-                  >
-                    {officers.map((o) => (
-                      <MenuItem key={o.id} value={o.id}>
-                        {o.name} — {o.district}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                    Showing officers registered in your district only.
+                  </Typography>
+                  <FormControl fullWidth sx={{ mt: 1 }}>
+                    <InputLabel id="share-officer-label">
+                      {t('farmerDash.selectOfficer')}
+                    </InputLabel>
+                    <Select
+                      labelId="share-officer-label"
+                      label={t('farmerDash.selectOfficer')}
+                      value={selectedOfficer}
+                      onChange={(e) => setSelectedOfficer(e.target.value)}
+                    >
+                      {officers.map((o) => (
+                        <MenuItem key={o.id} value={o.id}>
+                          {o.name} — {o.district}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </>
               )}
             </>
           )}

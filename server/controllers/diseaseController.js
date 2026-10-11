@@ -831,6 +831,7 @@ async function getReport(req, res) {
 // PATCH /api/disease/:id/reviewed  (officer only)
 async function markReviewed(req, res) {
   const reportId = req.params.id;
+  const reviewMessage = (req.body.review_message || '').trim();
 
   try {
     const [reports] = await pool.query('SELECT * FROM disease_reports WHERE id = ?', [
@@ -844,18 +845,22 @@ async function markReviewed(req, res) {
       return res.status(403).json({ message: 'This report was not shared with you' });
     }
 
-    await pool.query("UPDATE disease_reports SET status = 'reviewed' WHERE id = ?", [
-      reportId,
-    ]);
+    // Store the officer's review message alongside the status change.
+    await pool.query(
+      "UPDATE disease_reports SET status = 'reviewed', review_message = ? WHERE id = ?",
+      [reviewMessage || null, reportId]
+    );
+
+    // Notify the farmer with the officer's review feedback.
+    const officerName = req.user.name || 'An officer';
+    const notifMessage = reviewMessage
+      ? `${officerName} reviewed your disease report for ${report.crop_type}. Officer's note: "${reviewMessage}"`
+      : `${officerName} reviewed your disease report for ${report.crop_type}.`;
 
     await pool.query(
       `INSERT INTO notifications (user_id, type, message, related_id)
        VALUES (?, 'disease_reviewed', ?, ?)`,
-      [
-        report.user_id,
-        `An officer reviewed your disease report for ${report.crop_type}.`,
-        reportId,
-      ]
+      [report.user_id, notifMessage, reportId]
     );
 
     return res.json({ success: true });

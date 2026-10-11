@@ -444,7 +444,10 @@ async function getOfficerPendingReports(req, res) {
   try {
     const [reports] = await pool.query(
       `SELECT r.id, r.crop_type, r.district, r.image_path, r.disease_name,
-              r.confidence_level, r.created_at, u.name AS farmer_name
+              r.confidence_level, r.symptoms, r.treatment_en, r.treatment_si,
+              r.identified_species, r.ml_prediction, r.ml_confidence,
+              r.created_at, r.status,
+              u.name AS farmer_name, u.phone AS farmer_phone, u.email AS farmer_email
        FROM disease_reports r
        JOIN users u ON u.id = r.user_id
        WHERE r.officer_id = ? AND r.status = 'pending'

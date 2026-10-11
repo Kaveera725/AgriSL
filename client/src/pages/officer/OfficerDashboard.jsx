@@ -13,6 +13,10 @@ import {
   Chip,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Grid,
   IconButton,
@@ -25,6 +29,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -117,6 +122,14 @@ export default function OfficerDashboard() {
   const [busyId, setBusyId] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
 
+  // View full report dialog
+  const [viewReport, setViewReport] = useState(null);
+
+  // Review message dialog
+  const [reviewTarget, setReviewTarget] = useState(null); // report being reviewed
+  const [reviewMsg, setReviewMsg] = useState('');
+  const [reviewBusy, setReviewBusy] = useState(false);
+
   const fileInputRef = useRef(null);
   const [uploadingPic, setUploadingPic] = useState(false);
 
@@ -171,17 +184,27 @@ export default function OfficerDashboard() {
     }
   }
 
-  // Marks a disease report as reviewed. busyId is prefixed with 'r' so article
-  // busy state and report busy state don't collide when both use the same busyId slot.
-  async function markReviewed(reportId) {
-    setBusyId(`r${reportId}`);
+  // Opens the review dialog for a specific report.
+  function openReviewDialog(report) {
+    setReviewTarget(report);
+    setReviewMsg('');
+  }
+
+  // Submits the review with the officer's message and notifies the farmer.
+  async function submitReview() {
+    if (!reviewTarget) return;
+    setReviewBusy(true);
     try {
-      await api.patch(`/disease/${reportId}/reviewed`);
+      await api.patch(`/disease/${reviewTarget.id}/reviewed`, { review_message: reviewMsg });
+      setReviewTarget(null);
+      setReviewMsg('');
+      // Close view dialog too if same report is open
+      if (viewReport?.id === reviewTarget.id) setViewReport(null);
       await loadReports();
     } catch {
-      setError('Could not mark the report as reviewed.');
+      setError('Could not submit the review.');
     } finally {
-      setBusyId(null);
+      setReviewBusy(false);
     }
   }
 
@@ -552,7 +575,7 @@ export default function OfficerDashboard() {
                 ) : (
                   <Stack spacing={2}>
                     {reports.map((r) => (
-                      <Card key={r.id} variant="outlined">
+                      <Card key={r.id} variant="outlined" sx={{ borderLeft: 4, borderColor: 'warning.main' }}>
                         <CardContent>
                           <Stack
                             direction={{ xs: 'column', sm: 'row' }}
@@ -565,39 +588,53 @@ export default function OfficerDashboard() {
                                   component="img"
                                   src={r.image_url}
                                   alt={r.crop_type}
-                                  sx={{ width: 64, height: 64, borderRadius: 1, objectFit: 'cover' }}
+                                  sx={{ width: 72, height: 72, borderRadius: 1, objectFit: 'cover', cursor: 'pointer', flexShrink: 0 }}
+                                  onClick={() => setViewReport(r)}
                                 />
                               )}
                               <Box>
-                                <Typography sx={{ fontWeight: 600 }}>
+                                <Typography sx={{ fontWeight: 700 }}>
                                   {r.disease_name || 'Pending diagnosis'} — {r.crop_type}
                                 </Typography>
+                                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.3 }}>
+                                  <PhoneIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                  <Typography variant="body2" color="text.secondary">
+                                    {r.farmer_name}{r.farmer_phone ? ` · ${r.farmer_phone}` : ''}
+                                  </Typography>
+                                </Stack>
                                 <Typography variant="body2" color="text.secondary">
-                                  {r.farmer_name} · {r.district} ·{' '}
-                                  {new Date(r.created_at).toLocaleDateString()}
+                                  {r.district} · {formatDate(r.created_at)}
                                 </Typography>
                                 {r.confidence_level && (
                                   <Chip
                                     size="small"
                                     label={`Confidence: ${r.confidence_level}`}
+                                    color="warning"
                                     sx={{ mt: 0.5 }}
                                   />
                                 )}
                               </Box>
                             </Stack>
-                            <Button
-                              variant="contained"
-                              color="success"
-                              size="small"
-                              disabled={busyId === `r${r.id}`}
-                              onClick={() => markReviewed(r.id)}
-                            >
-                              {busyId === `r${r.id}` ? (
-                                <CircularProgress size={20} color="inherit" />
-                              ) : (
-                                'Mark Reviewed'
-                              )}
-                            </Button>
+                            <Stack direction="row" spacing={1}>
+                              <Button
+                                variant="outlined"
+                                color="info"
+                                size="small"
+                                startIcon={<VisibilityIcon />}
+                                onClick={() => setViewReport(r)}
+                              >
+                                View Report
+                              </Button>
+                              <Button
+                                variant="contained"
+                                color="success"
+                                size="small"
+                                startIcon={<CheckCircleIcon />}
+                                onClick={() => openReviewDialog(r)}
+                              >
+                                Review
+                              </Button>
+                            </Stack>
                           </Stack>
                         </CardContent>
                       </Card>
@@ -609,6 +646,142 @@ export default function OfficerDashboard() {
           </>
         )}
       </Container>
+
+      {/* ── Full Report View Dialog ── */}
+      <Dialog open={!!viewReport} onClose={() => setViewReport(null)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Disease Report — {viewReport?.crop_type}
+        </DialogTitle>
+        <DialogContent dividers>
+          {viewReport && (
+            <Box>
+              {/* Farmer Info */}
+              <Box sx={{ mb: 2, p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>Farmer Details</Typography>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <PhoneIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                  <Typography variant="body2"><strong>{viewReport.farmer_name}</strong></Typography>
+                </Stack>
+                {viewReport.farmer_phone && (
+                  <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.3 }}>
+                    <PhoneIcon sx={{ fontSize: 15, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">{viewReport.farmer_phone}</Typography>
+                  </Stack>
+                )}
+                {viewReport.farmer_email && (
+                  <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.3 }}>
+                    <EmailIcon sx={{ fontSize: 15, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">{viewReport.farmer_email}</Typography>
+                  </Stack>
+                )}
+              </Box>
+
+              {/* Crop image */}
+              {viewReport.image_url && (
+                <Box
+                  component="img"
+                  src={viewReport.image_url}
+                  alt={viewReport.crop_type}
+                  sx={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 1, mb: 2 }}
+                />
+              )}
+
+              {/* Core fields */}
+              <Grid container spacing={1} sx={{ mb: 1 }}>
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" color="text.secondary">Crop</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{viewReport.crop_type || '—'}</Typography>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" color="text.secondary">District</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{viewReport.district || '—'}</Typography>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" color="text.secondary">Disease Detected</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{viewReport.disease_name || 'Pending'}</Typography>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" color="text.secondary">Confidence</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{viewReport.confidence_level || '—'}</Typography>
+                </Grid>
+                {viewReport.identified_species && (
+                  <Grid size={{ xs: 12 }}>
+                    <Typography variant="caption" color="text.secondary">Species Identified</Typography>
+                    <Typography variant="body2">{viewReport.identified_species}</Typography>
+                  </Grid>
+                )}
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="caption" color="text.secondary">Reported On</Typography>
+                  <Typography variant="body2">{formatDate(viewReport.created_at)}</Typography>
+                </Grid>
+              </Grid>
+
+              {viewReport.symptoms && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">Symptoms</Typography>
+                  <Typography variant="body2">{viewReport.symptoms}</Typography>
+                </Box>
+              )}
+              {viewReport.treatment_en && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">Recommended Treatment</Typography>
+                  <Typography variant="body2">{viewReport.treatment_en}</Typography>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewReport(null)}>Close</Button>
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<CheckCircleIcon />}
+            onClick={() => {
+              openReviewDialog(viewReport);
+              setViewReport(null);
+            }}
+          >
+            Review This Report
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Review Message Dialog ── */}
+      <Dialog open={!!reviewTarget} onClose={() => !reviewBusy && setReviewTarget(null)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 700 }}>Review Disease Report</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Reviewing report for <strong>{reviewTarget?.crop_type}</strong> submitted by{' '}
+            <strong>{reviewTarget?.farmer_name}</strong>
+            {reviewTarget?.farmer_phone && (
+              <> · <PhoneIcon sx={{ fontSize: 14, verticalAlign: 'middle' }} /> {reviewTarget.farmer_phone}</>
+            )}
+          </Typography>
+          <TextField
+            label="Review Note (optional)"
+            placeholder="e.g. Confirmed as Septoria Leaf Spot. Recommend copper-based fungicide. Contact your nearest Agrarian Service Centre for treatment kits."
+            fullWidth
+            multiline
+            minRows={4}
+            value={reviewMsg}
+            onChange={(e) => setReviewMsg(e.target.value)}
+            helperText="Your note will be sent to the farmer as a notification."
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReviewTarget(null)} disabled={reviewBusy}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="success"
+            disabled={reviewBusy}
+            startIcon={reviewBusy ? <CircularProgress size={16} color="inherit" /> : <CheckCircleIcon />}
+            onClick={submitReview}
+          >
+            Mark as Reviewed
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
