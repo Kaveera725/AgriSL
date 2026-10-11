@@ -887,7 +887,7 @@ async function deleteReport(req, res) {
     if (!report) {
       return res.status(404).json({ message: 'Report not found' });
     }
-    if (report.user_id !== req.user.id) {
+    if (report.user_id !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
@@ -897,8 +897,13 @@ async function deleteReport(req, res) {
       try { fs.unlinkSync(imgPath); } catch (_) { /* ignore */ }
     }
 
-    // Cascade: delete related shared_reports rows first (FK), then the report.
-    await pool.query('DELETE FROM shared_reports WHERE report_id = ?', [reportId]);
+    // Delete any notifications linked to this report.
+    await pool.query(
+      "DELETE FROM notifications WHERE related_id = ? AND type IN ('disease_shared', 'disease_reviewed')",
+      [reportId]
+    );
+
+    // Delete the report.
     await pool.query('DELETE FROM disease_reports WHERE id = ?', [reportId]);
 
     return res.json({ message: 'Report deleted successfully' });

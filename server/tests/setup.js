@@ -72,8 +72,9 @@ function signToken(user) {
       name: user.name,
       district: user.district,
       is_approved: user.is_approved,
+      type: 'access',
     },
-    process.env.JWT_SECRET,
+    process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET,
     { expiresIn: '1h' }
   );
 }

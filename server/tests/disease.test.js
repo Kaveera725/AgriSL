@@ -163,4 +163,60 @@ describe('GET /api/disease/history', () => {
     expect(res.body.reports.length).toBe(1);
     expect(res.body.reports.every((r) => r.user_id === farmerA.id)).toBe(true);
   });
+
+  describe('DELETE /api/disease/:id', () => {
+    test('owner can delete their report → 200', async () => {
+      const farmer = await makeUser();
+      const upload = await request(app)
+        .post('/api/disease')
+        .set('Authorization', `Bearer ${farmer.token}`)
+        .field('crop_type', 'Rice')
+        .field('district', 'Kandy')
+        .attach('image', JPEG_BUFFER, { filename: 'delete_me.jpg', contentType: 'image/jpeg' });
+      trackUpload(upload);
+      const reportId = upload.body.report_id;
+
+      const del = await request(app)
+        .delete(`/api/disease/${reportId}`)
+        .set('Authorization', `Bearer ${farmer.token}`);
+
+      expect(del.status).toBe(200);
+      expect(del.body.message).toBe('Report deleted successfully');
+
+      // Verify report is gone
+      const history = await request(app)
+        .get('/api/disease/history')
+        .set('Authorization', `Bearer ${farmer.token}`);
+      expect(history.body.reports.some((r) => r.id === reportId)).toBe(false);
+    });
+
+    test('other user cannot delete report → 403', async () => {
+      const farmerA = await makeUser();
+      const farmerB = await makeUser();
+      const upload = await request(app)
+        .post('/api/disease')
+        .set('Authorization', `Bearer ${farmerA.token}`)
+        .field('crop_type', 'Rice')
+        .field('district', 'Kandy')
+        .attach('image', JPEG_BUFFER, { filename: 'farmerA.jpg', contentType: 'image/jpeg' });
+      trackUpload(upload);
+      const reportId = upload.body.report_id;
+
+      const del = await request(app)
+        .delete(`/api/disease/${reportId}`)
+        .set('Authorization', `Bearer ${farmerB.token}`);
+
+      expect(del.status).toBe(403);
+    });
+
+    test('nonexistent report → 404', async () => {
+      const farmer = await makeUser();
+      const del = await request(app)
+        .delete('/api/disease/999999')
+        .set('Authorization', `Bearer ${farmer.token}`);
+
+      expect(del.status).toBe(404);
+    });
+  });
 });
+
