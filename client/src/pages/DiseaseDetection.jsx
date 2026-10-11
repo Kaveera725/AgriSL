@@ -52,9 +52,6 @@ const CROP_OPTIONS = [
   { value: 'Rice', label: 'Rice (වී)' },
   { value: 'Tea', label: 'Tea (තේ)' },
   { value: 'Maize', label: 'Corn / Maize (ඉරිඟු)' },
-  { value: 'Coconut', label: 'Coconut (පොල්)' },
-  { value: 'Rubber', label: 'Rubber (රබර්)' },
-  { value: 'Onions', label: 'Onions (ළූණු)' },
 ];
 
 const DISTRICTS = [
